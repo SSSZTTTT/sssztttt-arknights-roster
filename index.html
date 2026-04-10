@@ -70,16 +70,13 @@
   </div>
 
   <script>
-    // スプレッドシート読み込み用（GAS）
     const GAS_URL = "https://script.google.com/macros/s/AKfycby6tdhjMeqZm6YZGDwEd5hZJX4wtTec_rH5OsGD5zqKXxlpL9itGtBFIYzUcTDRxkVU/exec";
-    
-    // ★★★ここにGoogle Cloud Functionsの「URL」を貼り付けてください★★★
     const GCF_URL = "https://discord-proxy-420879855582.asia-northeast1.run.app";
+    const COOLDOWN_MS = 3 * 60 * 1000; // 3分間のクールダウン
 
     let opData = {};
     let isTabsCreated = false;
 
-    // データ取得処理
     async function fetchData() {
       const cachedData = localStorage.getItem("arknightsRosterCache");
       if (cachedData) {
@@ -90,6 +87,7 @@
       }
       try {
         const response = await fetch(GAS_URL);
+        if (!response.ok) throw new Error("Network Error");
         const newData = await response.json();
         if (JSON.stringify(opData) !== JSON.stringify(newData)) {
           opData = newData;
@@ -100,37 +98,41 @@
           const tabName = activeTabBtn ? activeTabBtn.innerText : "集計";
           if (tabName === "集計") renderSummary(); else renderCards(tabName);
         }
-      } catch (e) { console.error(e); }
+      } catch (e) { 
+        console.error(e);
+        if (!cachedData) {
+          document.getElementById("loading").innerText = "データの取得に失敗しました。時間をおいて再読み込みしてください。";
+        }
+      }
     }
 
-    // タブ生成
     function createTabs() {
       if (isTabsCreated) return;
       const tabContainer = document.getElementById("tabContainer");
-      tabContainer.innerHTML = "";
-      ["集計", "先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊"].forEach(cls => {
-        const btn = document.createElement("button");
-        btn.className = "tab-btn" + (cls === "集計" ? " active" : "");
-        btn.innerText = cls;
-        btn.onclick = () => {
-          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
-          if (cls === "集計") renderSummary(); else renderCards(cls);
-        };
-        tabContainer.appendChild(btn);
+      let htmlString = "";
+      const classes = ["集計", "先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊"];
+      
+      classes.forEach(cls => {
+        const isActive = cls === "集計" ? " active" : "";
+        htmlString += `<button class="tab-btn${isActive}" onclick="switchTab('${cls}', this)">${cls}</button>`;
       });
+      tabContainer.innerHTML = htmlString;
       isTabsCreated = true;
     }
 
-    // ポップアップ制御
+    function switchTab(cls, btnElement) {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      btnElement.classList.add("active");
+      if (cls === "集計") renderSummary(); else renderCards(cls);
+    }
+
     function showModal(msg, isConfirm, onConfirmCallback) {
       const modal = document.getElementById("customModal");
       const msgDiv = document.getElementById("modalMessage");
       const btnsDiv = document.getElementById("modalButtons");
       
       msgDiv.innerHTML = msg;
-      btnsDiv.innerHTML = "";
-
+      
       if (isConfirm) {
         btnsDiv.innerHTML = `
           <button class="modal-btn btn-cancel" onclick="closeModal()">キャンセル</button>
@@ -147,8 +149,15 @@
       document.getElementById("customModal").style.display = "none";
     }
 
-    // Google Cloud Functions経由でDiscord送信
     function requestSupport(opName) {
+      // クールダウンのチェック
+      const lastReqTime = localStorage.getItem("lastSupportRequestTime");
+      if (lastReqTime && (Date.now() - parseInt(lastReqTime)) < COOLDOWN_MS) {
+        const remainSec = Math.ceil((COOLDOWN_MS - (Date.now() - parseInt(lastReqTime))) / 1000);
+        showModal(`連続送信は制限されています。<br>あと ${remainSec} 秒お待ちください。`, false);
+        return;
+      }
+
       showModal(`「${opName}」をサポートに出すよう<br>リクエストしますか？`, true, () => {
         showModal("⏳ 送信中...", false);
         
@@ -159,6 +168,7 @@
         })
         .then(res => {
           if (res.ok) {
+            localStorage.setItem("lastSupportRequestTime", Date.now().toString());
             showModal("✅ リクエストを送信しました！", false);
           } else {
             showModal("❌ 送信に失敗しました。<br>少し時間をおいてください。", false);
@@ -172,10 +182,10 @@
 
     function renderSummary() {
       const container = document.getElementById("cardContainer");
-      container.innerHTML = "";
+      let htmlString = "";
       (opData["集計"] || []).forEach(row => {
         const isTotal = row["職"] === "全職合計";
-        container.innerHTML += `
+        htmlString += `
           <div class="card ${isTotal ? 'total-card' : ''}">
             <div class="card-header"><div class="op-name" style="${isTotal ? 'color:#00a8ff' : ''}">${row["職"]}</div></div>
             <div class="stat-row"><span>人数:</span><span>${row["人数"]} 名</span></div>
@@ -183,23 +193,27 @@
             <div class="stat-row"><span>完凸率:</span><span>${typeof row["完凸率"]==='number'?(row["完凸率"]*100).toFixed(1)+'%':row["完凸率"]}</span></div>
           </div>`;
       });
+      container.innerHTML = htmlString;
     }
 
     function renderCards(className) {
       const container = document.getElementById("cardContainer");
-      container.innerHTML = "";
+      let htmlString = "";
       (opData[className] || []).forEach(op => {
         const pot = op["潜在"] >= 6 ? `<span class="highlight">完凸</span>(${op["潜在"]})` : op["潜在"];
         let mods = [];
         ["X","Y","Δ","α"].forEach(m => { if(op[m] && op[m] !== "-") mods.push(m+op[m]); });
         
-        container.innerHTML += `
+        // 簡易的なエスケープ処理を追加
+        const safeOpName = op["オペレーター名"].replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
+        htmlString += `
           <div class="card">
             <div class="card-header">
               <div class="op-name">${op["オペレーター名"]}</div>
               <div class="op-badges">
                 <span>Lv<span class="highlight">${op["Lv"]}</span></span>
-                <span>潜在:${pot}<span class="req-icon" onclick="requestSupport('${op["オペレーター名"].replace(/'/g, "\\'")}')">👤+</span></span>
+                <span>潜在:${pot}<span class="req-icon" onclick="requestSupport('${safeOpName}')">👤+</span></span>
               </div>
             </div>
             <div class="card-body">
@@ -212,6 +226,7 @@
             </div>
           </div>`;
       });
+      container.innerHTML = htmlString;
     }
     
     window.onload = fetchData;
