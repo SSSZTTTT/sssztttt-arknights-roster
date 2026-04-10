@@ -19,7 +19,7 @@
     /* カード全体のレイアウト（高さを統一するためのFlexbox） */
     .card { background-color: #2d2d2d; border: 1px solid #444; border-radius: 6px; padding: 10px 12px; position: relative; display: flex; flex-direction: column; }
     
-    /* カードヘッダー（長い名前は折り返し、バッジは右寄せ） */
+    /* カードヘッダー（デフォルトはスマホ用の横並び） */
     .card-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 4px; margin-bottom: 8px; gap: 4px 8px; }
     .op-name { font-size: 1.05rem; font-weight: bold; color: #fff; word-break: keep-all; }
     .op-badges { font-size: 0.8rem; color: #bbb; display: flex; gap: 8px; align-items: center; margin-left: auto; }
@@ -60,6 +60,20 @@
     .modal-btn { padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; border: none; font-size: 0.95rem; }
     .btn-cancel { background: #444; color: #ccc; }
     .btn-confirm { background: #00a8ff; color: #000; }
+
+    /* =========================================
+       PC・タブレット向け（画面幅600px以上）の調整
+       ========================================= */
+    @media (min-width: 600px) {
+      .card-header {
+        flex-direction: column;   /* 要素を縦並びにする */
+        align-items: flex-start;  /* 左寄せにする */
+      }
+      .op-badges {
+        margin-left: 0;           /* 右寄せを解除 */
+        margin-top: 4px;          /* 名前との間に少し隙間を空ける */
+      }
+    }
   </style>
 </head>
 <body>
