@@ -173,23 +173,59 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycby6tdhjMeqZm6YZGDwEd5hZJX4wtTec_rH5OsGD5zqKXxlpL9itGtBFIYzUcTDRxkVU/exec";
 
     let opData = {};
+    let isTabsCreated = false;
 
+    // データの取得と高速表示
     async function fetchData() {
+      // ① まずはスマホに保存されている前回のデータ（キャッシュ）を即座に読み込む
+      const cachedData = localStorage.getItem("arknightsRosterCache");
+      
+      if (cachedData) {
+        opData = JSON.parse(cachedData);
+        document.getElementById("loading").style.display = "none";
+        createTabs();
+        renderSummary(); // 一瞬で画面が表示されます
+      }
+
+      // ② 裏側でこっそり最新のデータをGASに取りに行く
       try {
         const response = await fetch(GAS_URL);
-        opData = await response.json();
-        document.getElementById("loading").style.display = "none";
-        
-        createTabs();
-        renderSummary();
+        const newData = await response.json();
+
+        // もしデータが更新されていれば、画面を最新に書き換える
+        if (JSON.stringify(opData) !== JSON.stringify(newData)) {
+          opData = newData;
+          localStorage.setItem("arknightsRosterCache", JSON.stringify(newData)); // キャッシュを更新
+          
+          if (!cachedData) {
+            // 初回アクセスの場合はここで初めて画面を作る
+            document.getElementById("loading").style.display = "none";
+            createTabs();
+            renderSummary();
+          } else {
+            // 既に画面が出ている場合は、現在開いているタブだけコッソリ更新する
+            const activeTabBtn = document.querySelector(".tab-btn.active");
+            if (activeTabBtn) {
+              const activeTabName = activeTabBtn.innerText;
+              if (activeTabName === "集計") renderSummary();
+              else renderCards(activeTabName);
+            }
+          }
+        }
       } catch (error) {
-        document.getElementById("loading").innerText = "データの取得に失敗しました。";
-        console.error(error);
+        if (!cachedData) {
+          document.getElementById("loading").innerText = "データの取得に失敗しました。";
+        }
+        console.error("バックグラウンド更新エラー:", error);
       }
     }
 
+    // タブの生成（重複生成を防ぐ仕組みを追加）
     function createTabs() {
+      if (isTabsCreated) return;
+      
       const tabContainer = document.getElementById("tabContainer");
+      tabContainer.innerHTML = ""; // 一旦クリア
       const classes = ["集計", "先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊"];
       
       classes.forEach(cls => {
@@ -200,15 +236,15 @@
           document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
           
-          if (cls === "集計") {
-            renderSummary();
-          } else {
-            renderCards(cls);
-          }
+          if (cls === "集計") renderSummary();
+          else renderCards(cls);
         };
         tabContainer.appendChild(btn);
       });
+      isTabsCreated = true;
     }
+
+    /* --- 以下、renderSummary と renderCards 関数は以前と全く同じです --- */
 
     function renderSummary() {
       const container = document.getElementById("cardContainer");
@@ -268,7 +304,6 @@
         if (op["α"] && op["α"] !== "-") mods.push(`α${op["α"]}`);
         const modText = mods.length > 0 ? `<span class="highlight">${mods.join(" / ")}</span>` : "-";
 
-        // ★モジュールとスキルを左右に分けたカードボディ
         const cardHTML = `
           <div class="card">
             <div class="card-header">
@@ -299,5 +334,3 @@
 
     window.onload = fetchData;
   </script>
-</body>
-</html>
