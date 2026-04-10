@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>星6オペレーター 極限育成ロースター</title>
+  <title>★6 育成記録</title>
   <style>
     /* ダークテーマ・スタイリング */
     body {
@@ -15,13 +15,13 @@
     }
     header {
       background-color: #111;
-      padding: 15px 20px;
+      padding: 10px 20px;
       text-align: center;
       border-bottom: 2px solid #00a8ff;
     }
     h1 {
       margin: 0;
-      font-size: 1.5rem;
+      font-size: 1.3rem;
       letter-spacing: 2px;
     }
     /* タブのスタイル */
@@ -29,15 +29,15 @@
       display: flex;
       overflow-x: auto;
       background-color: #2a2a2a;
-      padding: 10px;
-      gap: 10px;
+      padding: 8px;
+      gap: 8px;
       white-space: nowrap;
     }
     .tab-btn {
       background-color: #444;
       color: #fff;
       border: none;
-      padding: 10px 16px; /* スマホで押しやすいように少し高く */
+      padding: 10px 14px;
       border-radius: 4px;
       cursor: pointer;
       font-weight: bold;
@@ -47,70 +47,83 @@
       background-color: #00a8ff;
       color: #000;
     }
-    /* ★変更点: スマホでは縦並び(横長)、PCでは適度なグリッドになるように調整 */
+    /* ★コンテナの幅をさらに削る（300px → 240px） */
     .container {
-      padding: 15px;
+      padding: 10px;
       display: grid;
-      /* 最小幅を300pxに広げることで、スマホでは自動的に1列(横長)になります */
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 15px;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 10px;
     }
     .card {
       background-color: #2d2d2d;
       border: 1px solid #444;
       border-radius: 6px;
-      padding: 15px;
+      padding: 10px 12px; /* 左右の余白も少し削る */
       position: relative;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    /* ★名前とLv/潜在を同じ行にするためのヘッダー枠 */
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline; /* 文字の下端を揃える */
+      border-bottom: 1px solid #555;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
     }
     .op-name {
-      font-size: 1.2rem;
+      font-size: 1.05rem;
       font-weight: bold;
       color: #fff;
-      margin-bottom: 10px;
-      border-bottom: 1px solid #555;
-      padding-bottom: 5px;
+      white-space: nowrap;
+    }
+    /* Lvと潜在のミニバッジ */
+    .op-badges {
+      font-size: 0.8rem;
+      color: #bbb;
+      display: flex;
+      gap: 8px;
     }
     .stat-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.95rem; /* 少し文字を大きく */
-      margin-bottom: 8px;
+      font-size: 0.85rem;
+      margin-bottom: 2px;
     }
     .highlight {
       color: #ffd700;
       font-weight: bold;
     }
-    /* スキル表示用の専用コンテナ */
+    /* スキル表示枠 */
     .skills-container {
       display: flex;
       justify-content: space-around;
       background-color: #1a1a1a;
       border-radius: 4px;
-      padding: 8px 0;
-      margin-top: 12px;
+      padding: 4px 0;
+      margin-top: 6px;
       border: 1px solid #333;
     }
     .skill-item {
       text-align: center;
-      font-size: 1rem;
+      font-size: 0.95rem;
     }
     .skill-label {
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       color: #888;
       display: block;
-      margin-bottom: 2px;
+      margin-bottom: 0px;
     }
-    /* 集計カード（全職合計）の特別装飾 */
+    /* 集計カード */
     .total-card {
       border: 1px solid #00a8ff;
-      box-shadow: 0 0 12px rgba(0,168,255,0.2);
+      box-shadow: 0 0 8px rgba(0,168,255,0.2);
     }
     .loading {
       text-align: center;
-      padding: 50px;
-      font-size: 1.2rem;
+      padding: 30px;
+      font-size: 1rem;
       color: #888;
     }
   </style>
@@ -118,7 +131,7 @@
 <body>
 
   <header>
-    <h1>★6 育成ロースター</h1>
+    <h1>★6 育成記録</h1>
   </header>
 
   <div class="tabs" id="tabContainer">
@@ -130,7 +143,6 @@
     </div>
 
   <script>
-    // ★★★ここにGASのURLを貼り付けてください★★★
     const GAS_URL = "https://script.google.com/macros/s/AKfycby6tdhjMeqZm6YZGDwEd5hZJX4wtTec_rH5OsGD5zqKXxlpL9itGtBFIYzUcTDRxkVU/exec";
 
     let opData = {};
@@ -143,7 +155,6 @@
         document.getElementById("loading").style.display = "none";
         
         createTabs();
-        // 初期表示を「集計」にする
         renderSummary();
       } catch (error) {
         document.getElementById("loading").innerText = "データの取得に失敗しました。";
@@ -195,13 +206,15 @@
         const cardClass = isTotal ? "card total-card" : "card";
         const nameStyle = isTotal ? "color: #00a8ff;" : "";
 
-        // ★変更点: 「所属人数」を「人数」に、金色の強調(<span class="highlight">)を削除しました
+        // 集計カードのヘッダーも統一感を持たせる
         const cardHTML = `
           <div class="${cardClass}">
-            <div class="op-name" style="${nameStyle}">${row["職"]}</div>
+            <div class="card-header">
+              <div class="op-name" style="${nameStyle}">${row["職"]}</div>
+            </div>
             <div class="stat-row"><span>人数:</span> <span>${row["人数"]} 名</span></div>
             <div class="stat-row"><span>全特化完了:</span> <span>${row["全特化人数"]} 名</span></div>
-            <div class="stat-row"><span>特化3 達成率:</span> <span class="highlight">${tRate}</span></div>
+            <div class="stat-row"><span>特化3 達成率:</span> <span>${tRate}</span></div>
             <div class="stat-row"><span>完凸人数:</span> <span>${row["完凸人数"]} 名</span></div>
             <div class="stat-row"><span>完凸 達成率:</span> <span>${pRate}</span></div>
             <div class="stat-row"><span>潜在合計:</span> <span>${row["潜在合計"]}</span></div>
@@ -224,7 +237,8 @@
         const s2 = op["S2"] == 3 ? `<span class="highlight">M3</span>` : (op["S2"] || "-");
         const s3 = op["S3"] == 3 ? `<span class="highlight">M3</span>` : (op["S3"] || "-");
         
-        const pot = op["潜在"] >= 6 ? `<span class="highlight">完凸 (${op["潜在"]})</span>` : op["潜在"];
+        // 潜在の文字数を削るため、完凸(14) のような表記に調整
+        const pot = op["潜在"] >= 6 ? `<span class="highlight">完凸</span>(${op["潜在"]})` : op["潜在"];
 
         let mods = [];
         if (op["X"] && op["X"] !== "-") mods.push(`X${op["X"]}`);
@@ -233,12 +247,18 @@
         if (op["α"] && op["α"] !== "-") mods.push(`α${op["α"]}`);
         const modText = mods.length > 0 ? `<span class="highlight">${mods.join(" / ")}</span>` : "-";
 
+        // 名前、Lv、潜在を同じヘッダー行にまとめる
         const cardHTML = `
           <div class="card">
-            <div class="op-name">${op["オペレーター名"]}</div>
-            <div class="stat-row"><span>Lv:</span> <span class="highlight">${op["Lv"]}</span></div>
-            <div class="stat-row"><span>潜在:</span> <span>${pot}</span></div>
-            <div class="stat-row"><span>モジュール:</span> <span>${modText}</span></div>
+            <div class="card-header">
+              <div class="op-name">${op["オペレーター名"]}</div>
+              <div class="op-badges">
+                <span>Lv<span class="highlight">${op["Lv"]}</span></span>
+                <span>潜在:${pot}</span>
+              </div>
+            </div>
+            
+            <div class="stat-row"><span>モジュール</span> <span>${modText}</span></div>
             
             <div class="skills-container">
               <div class="skill-item"><span class="skill-label">S1</span>${s1}</div>
