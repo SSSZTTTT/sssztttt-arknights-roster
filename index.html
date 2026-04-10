@@ -47,7 +47,7 @@
       background-color: #00a8ff;
       color: #000;
     }
-    /* ★コンテナの幅をさらに削る（300px → 240px） */
+    /* コンテナの幅（最小240px維持） */
     .container {
       padding: 10px;
       display: grid;
@@ -58,18 +58,18 @@
       background-color: #2d2d2d;
       border: 1px solid #444;
       border-radius: 6px;
-      padding: 10px 12px; /* 左右の余白も少し削る */
+      padding: 10px 12px;
       position: relative;
       box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
-    /* ★名前とLv/潜在を同じ行にするためのヘッダー枠 */
+    /* ヘッダー枠（名前とLv/潜在） */
     .card-header {
       display: flex;
       justify-content: space-between;
-      align-items: baseline; /* 文字の下端を揃える */
+      align-items: baseline;
       border-bottom: 1px solid #555;
       padding-bottom: 4px;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
     .op-name {
       font-size: 1.05rem;
@@ -77,33 +77,53 @@
       color: #fff;
       white-space: nowrap;
     }
-    /* Lvと潜在のミニバッジ */
     .op-badges {
       font-size: 0.8rem;
       color: #bbb;
       display: flex;
       gap: 8px;
     }
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.85rem;
-      margin-bottom: 2px;
-    }
     .highlight {
       color: #ffd700;
       font-weight: bold;
     }
-    /* スキル表示枠 */
-    .skills-container {
+    /* ★新レイアウト：モジュールとスキルを横並びにするコンテナ */
+    .card-body {
+      display: flex;
+      gap: 8px; /* 左右のボックスの隙間 */
+    }
+    /* 左半分：モジュールボックス */
+    .module-box {
+      flex: 0 0 35%; /* 全体の35%の幅を確保 */
+      background-color: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 4px 2px;
+    }
+    .module-label {
+      font-size: 0.65rem;
+      color: #888;
+      margin-bottom: 2px;
+    }
+    .module-value {
+      font-size: 0.9rem;
+      text-align: center;
+      line-height: 1.2;
+    }
+    /* 右半分：スキルボックス */
+    .skills-box {
+      flex: 1; /* 残りの幅（65%）をすべて使う */
+      background-color: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 4px;
       display: flex;
       justify-content: space-around;
-      background-color: #1a1a1a;
-      border-radius: 4px;
+      align-items: center;
       padding: 4px 0;
-      margin-top: 6px;
-      border: 1px solid #333;
     }
     .skill-item {
       text-align: center;
@@ -115,7 +135,14 @@
       display: block;
       margin-bottom: 0px;
     }
-    /* 集計カード */
+    /* 集計カード専用の行スタイル（変更なし） */
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      margin-bottom: 2px;
+    }
     .total-card {
       border: 1px solid #00a8ff;
       box-shadow: 0 0 8px rgba(0,168,255,0.2);
@@ -147,7 +174,6 @@
 
     let opData = {};
 
-    // データの取得
     async function fetchData() {
       try {
         const response = await fetch(GAS_URL);
@@ -162,7 +188,6 @@
       }
     }
 
-    // タブの生成
     function createTabs() {
       const tabContainer = document.getElementById("tabContainer");
       const classes = ["集計", "先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊"];
@@ -185,7 +210,6 @@
       });
     }
 
-    // 「集計」タブの描画
     function renderSummary() {
       const container = document.getElementById("cardContainer");
       container.innerHTML = ""; 
@@ -206,7 +230,6 @@
         const cardClass = isTotal ? "card total-card" : "card";
         const nameStyle = isTotal ? "color: #00a8ff;" : "";
 
-        // 集計カードのヘッダーも統一感を持たせる
         const cardHTML = `
           <div class="${cardClass}">
             <div class="card-header">
@@ -224,7 +247,6 @@
       });
     }
 
-    // 各職分のカード描画
     function renderCards(className) {
       const container = document.getElementById("cardContainer");
       container.innerHTML = ""; 
@@ -237,7 +259,6 @@
         const s2 = op["S2"] == 3 ? `<span class="highlight">M3</span>` : (op["S2"] || "-");
         const s3 = op["S3"] == 3 ? `<span class="highlight">M3</span>` : (op["S3"] || "-");
         
-        // 潜在の文字数を削るため、完凸(14) のような表記に調整
         const pot = op["潜在"] >= 6 ? `<span class="highlight">完凸</span>(${op["潜在"]})` : op["潜在"];
 
         let mods = [];
@@ -247,7 +268,7 @@
         if (op["α"] && op["α"] !== "-") mods.push(`α${op["α"]}`);
         const modText = mods.length > 0 ? `<span class="highlight">${mods.join(" / ")}</span>` : "-";
 
-        // 名前、Lv、潜在を同じヘッダー行にまとめる
+        // ★モジュールとスキルを左右に分けたカードボディ
         const cardHTML = `
           <div class="card">
             <div class="card-header">
@@ -258,12 +279,16 @@
               </div>
             </div>
             
-            <div class="stat-row"><span>モジュール</span> <span>${modText}</span></div>
-            
-            <div class="skills-container">
-              <div class="skill-item"><span class="skill-label">S1</span>${s1}</div>
-              <div class="skill-item"><span class="skill-label">S2</span>${s2}</div>
-              <div class="skill-item"><span class="skill-label">S3</span>${s3}</div>
+            <div class="card-body">
+              <div class="module-box">
+                <span class="module-label">MOD</span>
+                <span class="module-value">${modText}</span>
+              </div>
+              <div class="skills-box">
+                <div class="skill-item"><span class="skill-label">S1</span>${s1}</div>
+                <div class="skill-item"><span class="skill-label">S2</span>${s2}</div>
+                <div class="skill-item"><span class="skill-label">S3</span>${s3}</div>
+              </div>
             </div>
             
           </div>
@@ -272,7 +297,6 @@
       });
     }
 
-    // 起動時にデータを取得
     window.onload = fetchData;
   </script>
 </body>
