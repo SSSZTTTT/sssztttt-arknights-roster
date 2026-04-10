@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>星6オペレーター 育成ロースター</title>
+  <title>星6オペレーター 極限育成ロースター</title>
   <style>
     /* ダークテーマ・スタイリング */
     body {
@@ -37,7 +37,7 @@
       background-color: #444;
       color: #fff;
       border: none;
-      padding: 8px 16px;
+      padding: 10px 16px; /* スマホで押しやすいように少し高く */
       border-radius: 4px;
       cursor: pointer;
       font-weight: bold;
@@ -47,11 +47,12 @@
       background-color: #00a8ff;
       color: #000;
     }
-    /* オペレーターカードのグリッド */
+    /* ★変更点: スマホでは縦並び(横長)、PCでは適度なグリッドになるように調整 */
     .container {
-      padding: 20px;
+      padding: 15px;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      /* 最小幅を300pxに広げることで、スマホでは自動的に1列(横長)になります */
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 15px;
     }
     .card {
@@ -63,7 +64,7 @@
       box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
     .op-name {
-      font-size: 1.1rem;
+      font-size: 1.2rem;
       font-weight: bold;
       color: #fff;
       margin-bottom: 10px;
@@ -73,29 +74,30 @@
     .stat-row {
       display: flex;
       justify-content: space-between;
-      font-size: 0.9rem;
-      margin-bottom: 6px;
+      align-items: center;
+      font-size: 0.95rem; /* 少し文字を大きく */
+      margin-bottom: 8px;
     }
     .highlight {
       color: #ffd700;
       font-weight: bold;
     }
-    /* スキル表示用の専用コンテナ（改行崩れ防止） */
+    /* スキル表示用の専用コンテナ */
     .skills-container {
       display: flex;
       justify-content: space-around;
       background-color: #1a1a1a;
       border-radius: 4px;
-      padding: 6px 0;
-      margin-top: 10px;
+      padding: 8px 0;
+      margin-top: 12px;
       border: 1px solid #333;
     }
     .skill-item {
       text-align: center;
-      font-size: 0.95rem;
+      font-size: 1rem;
     }
     .skill-label {
-      font-size: 0.65rem;
+      font-size: 0.7rem;
       color: #888;
       display: block;
       margin-bottom: 2px;
@@ -122,14 +124,14 @@
   <div class="tabs" id="tabContainer">
     </div>
 
-  <div id="loading" class="loading">スプレッドシートからデータを取得中...</div>
+  <div id="loading" class="loading">データを取得中...</div>
 
   <div class="container" id="cardContainer">
     </div>
 
   <script>
-    // ★★★ここにご自身のGASのURLを貼り付け直してください★★★
-    const GAS_URL = "https://script.google.com/macros/s/AKfycby6tdhjMeqZm6YZGDwEd5hZJX4wtTec_rH5OsGD5zqKXxlpL9itGtBFIYzUcTDRxkVU/exec";
+    // ★★★ここにGASのURLを貼り付けてください★★★
+    const GAS_URL = "ここにURLを貼り付けてください";
 
     let opData = {};
 
@@ -149,7 +151,7 @@
       }
     }
 
-    // タブの生成（「集計」を先頭に追加）
+    // タブの生成
     function createTabs() {
       const tabContainer = document.getElementById("tabContainer");
       const classes = ["集計", "先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊"];
@@ -181,7 +183,6 @@
       if (!ops) return;
 
       ops.forEach(row => {
-        // パーセンテージが小数（0.84など）で来た場合に見やすく変換する関数
         const formatPercent = (val) => {
           if (typeof val === 'number') return (val * 100).toFixed(1) + '%';
           return val;
@@ -190,15 +191,15 @@
         const tRate = formatPercent(row["特化3率"]);
         const pRate = formatPercent(row["完凸率"]);
         
-        // 「全職合計」の行だけ青く光らせる
         const isTotal = row["職"] === "全職合計";
         const cardClass = isTotal ? "card total-card" : "card";
         const nameStyle = isTotal ? "color: #00a8ff;" : "";
 
+        // ★変更点: 「所属人数」を「人数」に、金色の強調(<span class="highlight">)を削除しました
         const cardHTML = `
           <div class="${cardClass}">
             <div class="op-name" style="${nameStyle}">${row["職"]}</div>
-            <div class="stat-row"><span>所属人数:</span> <span><span class="highlight">${row["人数"]}</span> 名</span></div>
+            <div class="stat-row"><span>人数:</span> <span>${row["人数"]} 名</span></div>
             <div class="stat-row"><span>全特化完了:</span> <span>${row["全特化人数"]} 名</span></div>
             <div class="stat-row"><span>特化3 達成率:</span> <span class="highlight">${tRate}</span></div>
             <div class="stat-row"><span>完凸人数:</span> <span>${row["完凸人数"]} 名</span></div>
@@ -210,7 +211,7 @@
       });
     }
 
-    // 各職分（先鋒〜特殊）のカード描画
+    // 各職分のカード描画
     function renderCards(className) {
       const container = document.getElementById("cardContainer");
       container.innerHTML = ""; 
