@@ -15,43 +15,26 @@
     .tab-btn.active { background-color: #00a8ff; color: #000; }
     
     .container { padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
-    .card { background-color: #2d2d2d; border: 1px solid #444; border-radius: 6px; padding: 10px 12px; position: relative; }
-    .card-header { 
-  display: flex; 
-  flex-wrap: wrap; /* 追加: 収まりきらない場合は折り返しを許可する */
-  justify-content: space-between; 
-  align-items: center; 
-  border-bottom: 1px solid #555; 
-  padding-bottom: 4px; 
-  margin-bottom: 8px;
-  gap: 4px 8px; /* 上下・左右の隙間を調整 */
-}
-
-.op-name { 
-  font-size: 1.05rem; 
-  font-weight: bold; 
-  color: #fff; 
-  /* white-space: nowrap; を削除して自動改行させる */
-  word-break: keep-all; /* 単語の途中で不自然に改行されるのを防ぐ */
-}
-
-.op-badges { 
-  font-size: 0.8rem; 
-  color: #bbb; 
-  display: flex; 
-  gap: 8px; 
-  align-items: center; 
-  margin-left: auto; /* 折り返した時にバッジを右寄せにする */
-}
+    
+    /* カード全体のレイアウト（高さを統一するためのFlexbox） */
+    .card { background-color: #2d2d2d; border: 1px solid #444; border-radius: 6px; padding: 10px 12px; position: relative; display: flex; flex-direction: column; }
+    
+    /* カードヘッダー（長い名前は折り返し、バッジは右寄せ） */
+    .card-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 4px; margin-bottom: 8px; gap: 4px 8px; }
+    .op-name { font-size: 1.05rem; font-weight: bold; color: #fff; word-break: keep-all; }
+    .op-badges { font-size: 0.8rem; color: #bbb; display: flex; gap: 8px; align-items: center; margin-left: auto; }
+    
     .highlight { color: #ffd700; font-weight: bold; }
     
-    .card-body { display: flex; gap: 8px; }
+    /* カードボディ（一番下に配置されるように margin-top: auto を指定） */
+    .card-body { display: flex; gap: 8px; margin-top: auto; }
     .module-box { flex: 0 0 35%; background-color: #1a1a1a; border: 1px solid #333; border-radius: 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 4px 2px; }
     .module-label { font-size: 0.65rem; color: #888; }
     .module-value { font-size: 0.9rem; text-align: center; line-height: 1.2; }
     .skills-box { flex: 1; background-color: #1a1a1a; border: 1px solid #333; border-radius: 4px; display: flex; justify-content: space-around; align-items: center; padding: 4px 0; }
     .skill-item { text-align: center; font-size: 0.95rem; }
     .skill-label { font-size: 0.65rem; color: #888; display: block; }
+    
     .stat-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px; }
     .total-card { border: 1px solid #00a8ff; }
     
@@ -107,7 +90,8 @@
         opData = JSON.parse(cachedData);
         document.getElementById("loading").style.display = "none";
         createTabs();
-        renderSummary();
+        // 初期表示を「先鋒」にする
+        renderCards("先鋒");
       }
       try {
         const response = await fetch(GAS_URL);
@@ -119,7 +103,7 @@
           document.getElementById("loading").style.display = "none";
           createTabs();
           const activeTabBtn = document.querySelector(".tab-btn.active");
-          const tabName = activeTabBtn ? activeTabBtn.innerText : "集計";
+          const tabName = activeTabBtn ? activeTabBtn.innerText : "先鋒"; // デフォルトを先鋒に
           if (tabName === "集計") renderSummary(); else renderCards(tabName);
         }
       } catch (e) { 
@@ -134,10 +118,13 @@
       if (isTabsCreated) return;
       const tabContainer = document.getElementById("tabContainer");
       let htmlString = "";
-      const classes = ["集計", "先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊"];
       
-      classes.forEach(cls => {
-        const isActive = cls === "集計" ? " active" : "";
+      // 集計を一番後ろに移動
+      const classes = ["先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊", "集計"];
+      
+      classes.forEach((cls, index) => {
+        // 一番最初（先鋒）をデフォルトでアクティブにする
+        const isActive = index === 0 ? " active" : "";
         htmlString += `<button class="tab-btn${isActive}" onclick="switchTab('${cls}', this)">${cls}</button>`;
       });
       tabContainer.innerHTML = htmlString;
@@ -228,7 +215,7 @@
         let mods = [];
         ["X","Y","Δ","α"].forEach(m => { if(op[m] && op[m] !== "-") mods.push(m+op[m]); });
         
-        // 簡易的なエスケープ処理を追加
+        // 簡易的なエスケープ処理
         const safeOpName = op["オペレーター名"].replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         
         htmlString += `
