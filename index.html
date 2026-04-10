@@ -1,1 +1,220 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>★6 育成記録</title>
+  <style>
+    /* ダークテーマ・スタイリング */
+    body { background-color: #1e1e1e; color: #e0e0e0; font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; }
+    header { background-color: #111; padding: 10px 20px; text-align: center; border-bottom: 2px solid #00a8ff; }
+    h1 { margin: 0; font-size: 1.3rem; letter-spacing: 2px; }
+    
+    .tabs { display: flex; overflow-x: auto; background-color: #2a2a2a; padding: 8px; gap: 8px; white-space: nowrap; }
+    .tab-btn { background-color: #444; color: #fff; border: none; padding: 10px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .tab-btn.active { background-color: #00a8ff; color: #000; }
+    
+    .container { padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+    .card { background-color: #2d2d2d; border: 1px solid #444; border-radius: 6px; padding: 10px 12px; position: relative; }
+    .card-header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #555; padding-bottom: 4px; margin-bottom: 8px; }
+    .op-name { font-size: 1.05rem; font-weight: bold; color: #fff; white-space: nowrap; }
+    .op-badges { font-size: 0.8rem; color: #bbb; display: flex; gap: 8px; align-items: center; }
+    .highlight { color: #ffd700; font-weight: bold; }
+    
+    .card-body { display: flex; gap: 8px; }
+    .module-box { flex: 0 0 35%; background-color: #1a1a1a; border: 1px solid #333; border-radius: 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 4px 2px; }
+    .module-label { font-size: 0.65rem; color: #888; }
+    .module-value { font-size: 0.9rem; text-align: center; line-height: 1.2; }
+    .skills-box { flex: 1; background-color: #1a1a1a; border: 1px solid #333; border-radius: 4px; display: flex; justify-content: space-around; align-items: center; padding: 4px 0; }
+    .skill-item { text-align: center; font-size: 0.95rem; }
+    .skill-label { font-size: 0.65rem; color: #888; display: block; }
+    .stat-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px; }
+    .total-card { border: 1px solid #00a8ff; }
+    
+    .req-icon {
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+      background-color: #444; color: #00a8ff; border: 1px solid #00a8ff;
+      border-radius: 4px; padding: 1px 6px; margin-left: 6px; font-size: 0.85rem; transition: 0.2s;
+    }
+    .req-icon:active { transform: scale(0.9); background-color: #00a8ff; color: #000; }
+    .loading { text-align: center; padding: 30px; color: #888; }
 
+    /* モーダル */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 9999;
+    }
+    .modal-content {
+      background-color: #222; border: 1px solid #00a8ff; border-radius: 8px; padding: 20px;
+      text-align: center; min-width: 260px; max-width: 80%; box-shadow: 0 4px 15px rgba(0, 168, 255, 0.2);
+    }
+    .modal-msg { margin-bottom: 20px; font-size: 1rem; color: #fff; line-height: 1.5; }
+    .modal-btns { display: flex; justify-content: center; gap: 15px; }
+    .modal-btn { padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; border: none; font-size: 0.95rem; }
+    .btn-cancel { background: #444; color: #ccc; }
+    .btn-confirm { background: #00a8ff; color: #000; }
+  </style>
+</head>
+<body>
+
+  <header><h1>★6 育成記録</h1></header>
+  <div class="tabs" id="tabContainer"></div>
+  <div id="loading" class="loading">データを取得中...</div>
+  <div class="container" id="cardContainer"></div>
+
+  <div id="customModal" class="modal-overlay">
+    <div class="modal-content">
+      <div id="modalMessage" class="modal-msg">メッセージ</div>
+      <div id="modalButtons" class="modal-btns"></div>
+    </div>
+  </div>
+
+  <script>
+    // スプレッドシート読み込み用（GAS）
+    const GAS_URL = "https://script.google.com/macros/s/AKfycby6tdhjMeqZm6YZGDwEd5hZJX4wtTec_rH5OsGD5zqKXxlpL9itGtBFIYzUcTDRxkVU/exec";
+    
+    // ★★★ここにGoogle Cloud Functionsの「URL」を貼り付けてください★★★
+    const GCF_URL = "https://discord-proxy-420879855582.asia-northeast1.run.app";
+
+    let opData = {};
+    let isTabsCreated = false;
+
+    // データ取得処理
+    async function fetchData() {
+      const cachedData = localStorage.getItem("arknightsRosterCache");
+      if (cachedData) {
+        opData = JSON.parse(cachedData);
+        document.getElementById("loading").style.display = "none";
+        createTabs();
+        renderSummary();
+      }
+      try {
+        const response = await fetch(GAS_URL);
+        const newData = await response.json();
+        if (JSON.stringify(opData) !== JSON.stringify(newData)) {
+          opData = newData;
+          localStorage.setItem("arknightsRosterCache", JSON.stringify(newData));
+          document.getElementById("loading").style.display = "none";
+          createTabs();
+          const activeTabBtn = document.querySelector(".tab-btn.active");
+          const tabName = activeTabBtn ? activeTabBtn.innerText : "集計";
+          if (tabName === "集計") renderSummary(); else renderCards(tabName);
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    // タブ生成
+    function createTabs() {
+      if (isTabsCreated) return;
+      const tabContainer = document.getElementById("tabContainer");
+      tabContainer.innerHTML = "";
+      ["集計", "先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊"].forEach(cls => {
+        const btn = document.createElement("button");
+        btn.className = "tab-btn" + (cls === "集計" ? " active" : "");
+        btn.innerText = cls;
+        btn.onclick = () => {
+          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          if (cls === "集計") renderSummary(); else renderCards(cls);
+        };
+        tabContainer.appendChild(btn);
+      });
+      isTabsCreated = true;
+    }
+
+    // ポップアップ制御
+    function showModal(msg, isConfirm, onConfirmCallback) {
+      const modal = document.getElementById("customModal");
+      const msgDiv = document.getElementById("modalMessage");
+      const btnsDiv = document.getElementById("modalButtons");
+      
+      msgDiv.innerHTML = msg;
+      btnsDiv.innerHTML = "";
+
+      if (isConfirm) {
+        btnsDiv.innerHTML = `
+          <button class="modal-btn btn-cancel" onclick="closeModal()">キャンセル</button>
+          <button class="modal-btn btn-confirm" id="confirmBtn">リクエスト</button>
+        `;
+        document.getElementById("confirmBtn").onclick = () => { onConfirmCallback(); };
+      } else {
+        btnsDiv.innerHTML = `<button class="modal-btn btn-confirm" onclick="closeModal()">OK</button>`;
+      }
+      modal.style.display = "flex";
+    }
+
+    function closeModal() {
+      document.getElementById("customModal").style.display = "none";
+    }
+
+    // Google Cloud Functions経由でDiscord送信
+    function requestSupport(opName) {
+      showModal(`「${opName}」をサポートに出すよう<br>リクエストしますか？`, true, () => {
+        showModal("⏳ 送信中...", false);
+        
+        fetch(GCF_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ opName: opName })
+        })
+        .then(res => {
+          if (res.ok) {
+            showModal("✅ リクエストを送信しました！", false);
+          } else {
+            showModal("❌ 送信に失敗しました。<br>少し時間をおいてください。", false);
+          }
+        })
+        .catch(() => {
+          showModal("❌ 通信エラーが発生しました。", false);
+        });
+      });
+    }
+
+    function renderSummary() {
+      const container = document.getElementById("cardContainer");
+      container.innerHTML = "";
+      (opData["集計"] || []).forEach(row => {
+        const isTotal = row["職"] === "全職合計";
+        container.innerHTML += `
+          <div class="card ${isTotal ? 'total-card' : ''}">
+            <div class="card-header"><div class="op-name" style="${isTotal ? 'color:#00a8ff' : ''}">${row["職"]}</div></div>
+            <div class="stat-row"><span>人数:</span><span>${row["人数"]} 名</span></div>
+            <div class="stat-row"><span>特化3率:</span><span>${typeof row["特化3率"]==='number'?(row["特化3率"]*100).toFixed(1)+'%':row["特化3率"]}</span></div>
+            <div class="stat-row"><span>完凸率:</span><span>${typeof row["完凸率"]==='number'?(row["完凸率"]*100).toFixed(1)+'%':row["完凸率"]}</span></div>
+          </div>`;
+      });
+    }
+
+    function renderCards(className) {
+      const container = document.getElementById("cardContainer");
+      container.innerHTML = "";
+      (opData[className] || []).forEach(op => {
+        const pot = op["潜在"] >= 6 ? `<span class="highlight">完凸</span>(${op["潜在"]})` : op["潜在"];
+        let mods = [];
+        ["X","Y","Δ","α"].forEach(m => { if(op[m] && op[m] !== "-") mods.push(m+op[m]); });
+        
+        container.innerHTML += `
+          <div class="card">
+            <div class="card-header">
+              <div class="op-name">${op["オペレーター名"]}</div>
+              <div class="op-badges">
+                <span>Lv<span class="highlight">${op["Lv"]}</span></span>
+                <span>潜在:${pot}<span class="req-icon" onclick="requestSupport('${op["オペレーター名"].replace(/'/g, "\\'")}')">👤+</span></span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="module-box"><span class="module-label">MOD</span><span class="module-value">${mods.length?`<span class="highlight">${mods.join("/")}</span>`:"-"}</span></div>
+              <div class="skills-box">
+                <div class="skill-item"><span class="skill-label">S1</span>${op["S1"]==3?'<span class="highlight">M3</span>':op["S1"]}</div>
+                <div class="skill-item"><span class="skill-label">S2</span>${op["S2"]==3?'<span class="highlight">M3</span>':op["S2"]}</div>
+                <div class="skill-item"><span class="skill-label">S3</span>${op["S3"]==3?'<span class="highlight">M3</span>':op["S3"]}</div>
+              </div>
+            </div>
+          </div>`;
+      });
+    }
+    
+    window.onload = fetchData;
+  </script>
+</body>
+</html>
