@@ -16,9 +16,33 @@
     
     .container { padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
     .card { background-color: #2d2d2d; border: 1px solid #444; border-radius: 6px; padding: 10px 12px; position: relative; }
-    .card-header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #555; padding-bottom: 4px; margin-bottom: 8px; }
-    .op-name { font-size: 1.05rem; font-weight: bold; color: #fff; white-space: nowrap; }
-    .op-badges { font-size: 0.8rem; color: #bbb; display: flex; gap: 8px; align-items: center; }
+    .card-header { 
+  display: flex; 
+  flex-wrap: wrap; /* 追加: 収まりきらない場合は折り返しを許可する */
+  justify-content: space-between; 
+  align-items: center; 
+  border-bottom: 1px solid #555; 
+  padding-bottom: 4px; 
+  margin-bottom: 8px;
+  gap: 4px 8px; /* 上下・左右の隙間を調整 */
+}
+
+.op-name { 
+  font-size: 1.05rem; 
+  font-weight: bold; 
+  color: #fff; 
+  /* white-space: nowrap; を削除して自動改行させる */
+  word-break: keep-all; /* 単語の途中で不自然に改行されるのを防ぐ */
+}
+
+.op-badges { 
+  font-size: 0.8rem; 
+  color: #bbb; 
+  display: flex; 
+  gap: 8px; 
+  align-items: center; 
+  margin-left: auto; /* 折り返した時にバッジを右寄せにする */
+}
     .highlight { color: #ffd700; font-weight: bold; }
     
     .card-body { display: flex; gap: 8px; }
