@@ -5,332 +5,160 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>★6 育成記録</title>
   <style>
-    /* ダークテーマ・スタイリング */
-    body {
-      background-color: #1e1e1e;
-      color: #e0e0e0;
-      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background-color: #111;
-      padding: 10px 20px;
-      text-align: center;
-      border-bottom: 2px solid #00a8ff;
-    }
-    h1 {
-      margin: 0;
-      font-size: 1.3rem;
-      letter-spacing: 2px;
-    }
-    /* タブのスタイル */
-    .tabs {
-      display: flex;
-      overflow-x: auto;
-      background-color: #2a2a2a;
-      padding: 8px;
-      gap: 8px;
-      white-space: nowrap;
-    }
-    .tab-btn {
-      background-color: #444;
-      color: #fff;
-      border: none;
-      padding: 10px 14px;
-      border-radius: 4px;
+    body { background-color: #1e1e1e; color: #e0e0e0; font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; }
+    header { background-color: #111; padding: 10px 20px; text-align: center; border-bottom: 2px solid #00a8ff; }
+    h1 { margin: 0; font-size: 1.3rem; letter-spacing: 2px; }
+    .tabs { display: flex; overflow-x: auto; background-color: #2a2a2a; padding: 8px; gap: 8px; white-space: nowrap; }
+    .tab-btn { background-color: #444; color: #fff; border: none; padding: 10px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .tab-btn.active { background-color: #00a8ff; color: #000; }
+    .container { padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+    .card { background-color: #2d2d2d; border: 1px solid #444; border-radius: 6px; padding: 10px 12px; position: relative; }
+    .card-header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #555; padding-bottom: 4px; margin-bottom: 8px; }
+    .op-name { font-size: 1.05rem; font-weight: bold; color: #fff; }
+    .op-badges { font-size: 0.8rem; color: #bbb; display: flex; gap: 8px; align-items: center; }
+    .highlight { color: #ffd700; font-weight: bold; }
+    .card-body { display: flex; gap: 8px; }
+    .module-box { flex: 0 0 35%; background-color: #1a1a1a; border: 1px solid #333; border-radius: 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 4px 2px; }
+    .module-label { font-size: 0.65rem; color: #888; }
+    .module-value { font-size: 0.9rem; text-align: center; line-height: 1.2; }
+    .skills-box { flex: 1; background-color: #1a1a1a; border: 1px solid #333; border-radius: 4px; display: flex; justify-content: space-around; align-items: center; padding: 4px 0; }
+    .skill-item { text-align: center; font-size: 0.95rem; }
+    .skill-label { font-size: 0.65rem; color: #888; display: block; }
+    .stat-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px; }
+    .total-card { border: 1px solid #00a8ff; }
+    
+    /* アイコンボタンのスタイル */
+    .req-icon {
       cursor: pointer;
-      font-weight: bold;
-      transition: background 0.2s;
-    }
-    .tab-btn.active {
-      background-color: #00a8ff;
-      color: #000;
-    }
-    /* コンテナの幅（最小240px維持） */
-    .container {
-      padding: 10px;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 10px;
-    }
-    .card {
-      background-color: #2d2d2d;
-      border: 1px solid #444;
-      border-radius: 6px;
-      padding: 10px 12px;
-      position: relative;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    /* ヘッダー枠（名前とLv/潜在） */
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      border-bottom: 1px solid #555;
-      padding-bottom: 4px;
-      margin-bottom: 8px;
-    }
-    .op-name {
-      font-size: 1.05rem;
-      font-weight: bold;
-      color: #fff;
-      white-space: nowrap;
-    }
-    .op-badges {
-      font-size: 0.8rem;
-      color: #bbb;
-      display: flex;
-      gap: 8px;
-    }
-    .highlight {
-      color: #ffd700;
-      font-weight: bold;
-    }
-    /* ★新レイアウト：モジュールとスキルを横並びにするコンテナ */
-    .card-body {
-      display: flex;
-      gap: 8px; /* 左右のボックスの隙間 */
-    }
-    /* 左半分：モジュールボックス */
-    .module-box {
-      flex: 0 0 35%; /* 全体の35%の幅を確保 */
-      background-color: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 4px;
-      display: flex;
-      flex-direction: column;
+      display: inline-flex;
+      align-items: center;
       justify-content: center;
-      align-items: center;
-      padding: 4px 2px;
-    }
-    .module-label {
-      font-size: 0.65rem;
-      color: #888;
-      margin-bottom: 2px;
-    }
-    .module-value {
-      font-size: 0.9rem;
-      text-align: center;
-      line-height: 1.2;
-    }
-    /* 右半分：スキルボックス */
-    .skills-box {
-      flex: 1; /* 残りの幅（65%）をすべて使う */
-      background-color: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 4px;
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      padding: 4px 0;
-    }
-    .skill-item {
-      text-align: center;
-      font-size: 0.95rem;
-    }
-    .skill-label {
-      font-size: 0.65rem;
-      color: #888;
-      display: block;
-      margin-bottom: 0px;
-    }
-    /* 集計カード専用の行スタイル（変更なし） */
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.85rem;
-      margin-bottom: 2px;
-    }
-    .total-card {
+      background-color: #444;
+      color: #00a8ff;
       border: 1px solid #00a8ff;
-      box-shadow: 0 0 8px rgba(0,168,255,0.2);
+      border-radius: 3px;
+      padding: 1px 4px;
+      margin-left: 4px;
+      font-size: 0.85rem;
+      transition: 0.2s;
     }
-    .loading {
-      text-align: center;
-      padding: 30px;
-      font-size: 1rem;
-      color: #888;
-    }
+    .req-icon:active { transform: scale(0.9); background-color: #00a8ff; color: #000; }
+    .loading { text-align: center; padding: 30px; color: #888; }
   </style>
 </head>
 <body>
-
-  <header>
-    <h1>★6 育成記録</h1>
-  </header>
-
-  <div class="tabs" id="tabContainer">
-    </div>
-
+  <header><h1>★6 育成記録</h1></header>
+  <div class="tabs" id="tabContainer"></div>
   <div id="loading" class="loading">データを取得中...</div>
-
-  <div class="container" id="cardContainer">
-    </div>
+  <div class="container" id="cardContainer"></div>
 
   <script>
+    // 指定のGAS URLを埋め込み済み
     const GAS_URL = "https://script.google.com/macros/s/AKfycby6tdhjMeqZm6YZGDwEd5hZJX4wtTec_rH5OsGD5zqKXxlpL9itGtBFIYzUcTDRxkVU/exec";
-
     let opData = {};
     let isTabsCreated = false;
 
-    // データの取得と高速表示
     async function fetchData() {
-      // ① まずはスマホに保存されている前回のデータ（キャッシュ）を即座に読み込む
       const cachedData = localStorage.getItem("arknightsRosterCache");
-      
       if (cachedData) {
         opData = JSON.parse(cachedData);
         document.getElementById("loading").style.display = "none";
         createTabs();
-        renderSummary(); // 一瞬で画面が表示されます
+        renderSummary();
       }
-
-      // ② 裏側でこっそり最新のデータをGASに取りに行く
       try {
         const response = await fetch(GAS_URL);
         const newData = await response.json();
-
-        // もしデータが更新されていれば、画面を最新に書き換える
         if (JSON.stringify(opData) !== JSON.stringify(newData)) {
           opData = newData;
-          localStorage.setItem("arknightsRosterCache", JSON.stringify(newData)); // キャッシュを更新
-          
-          if (!cachedData) {
-            // 初回アクセスの場合はここで初めて画面を作る
-            document.getElementById("loading").style.display = "none";
-            createTabs();
-            renderSummary();
-          } else {
-            // 既に画面が出ている場合は、現在開いているタブだけコッソリ更新する
-            const activeTabBtn = document.querySelector(".tab-btn.active");
-            if (activeTabBtn) {
-              const activeTabName = activeTabBtn.innerText;
-              if (activeTabName === "集計") renderSummary();
-              else renderCards(activeTabName);
-            }
-          }
+          localStorage.setItem("arknightsRosterCache", JSON.stringify(newData));
+          document.getElementById("loading").style.display = "none";
+          createTabs();
+          const activeTabBtn = document.querySelector(".tab-btn.active");
+          const tabName = activeTabBtn ? activeTabBtn.innerText : "集計";
+          if (tabName === "集計") renderSummary(); else renderCards(tabName);
         }
-      } catch (error) {
-        if (!cachedData) {
-          document.getElementById("loading").innerText = "データの取得に失敗しました。";
-        }
-        console.error("バックグラウンド更新エラー:", error);
-      }
+      } catch (e) { console.error(e); }
     }
 
-    // タブの生成（重複生成を防ぐ仕組みを追加）
     function createTabs() {
       if (isTabsCreated) return;
-      
       const tabContainer = document.getElementById("tabContainer");
-      tabContainer.innerHTML = ""; // 一旦クリア
-      const classes = ["集計", "先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊"];
-      
-      classes.forEach(cls => {
+      tabContainer.innerHTML = "";
+      ["集計", "先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊"].forEach(cls => {
         const btn = document.createElement("button");
         btn.className = "tab-btn" + (cls === "集計" ? " active" : "");
         btn.innerText = cls;
         btn.onclick = () => {
           document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
-          
-          if (cls === "集計") renderSummary();
-          else renderCards(cls);
+          if (cls === "集計") renderSummary(); else renderCards(cls);
         };
         tabContainer.appendChild(btn);
       });
       isTabsCreated = true;
     }
 
-    /* --- 以下、renderSummary と renderCards 関数は以前と全く同じです --- */
+    function requestSupport(opName) {
+      if (!window.confirm(`「${opName}」をサポートに出すようリクエストしますか？`)) return;
+      
+      const url = `${GAS_URL}?action=request&opName=${encodeURIComponent(opName)}`;
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "success") {
+            alert("リクエストを送信しました！");
+          } else {
+            alert("Discordの制限により送信に失敗しました。少し時間をおいてください。");
+          }
+        })
+        .catch(() => alert("通信エラーが発生しました。"));
+    }
 
     function renderSummary() {
       const container = document.getElementById("cardContainer");
-      container.innerHTML = ""; 
-
-      const ops = opData["集計"];
-      if (!ops) return;
-
-      ops.forEach(row => {
-        const formatPercent = (val) => {
-          if (typeof val === 'number') return (val * 100).toFixed(1) + '%';
-          return val;
-        };
-
-        const tRate = formatPercent(row["特化3率"]);
-        const pRate = formatPercent(row["完凸率"]);
-        
+      container.innerHTML = "";
+      (opData["集計"] || []).forEach(row => {
         const isTotal = row["職"] === "全職合計";
-        const cardClass = isTotal ? "card total-card" : "card";
-        const nameStyle = isTotal ? "color: #00a8ff;" : "";
-
-        const cardHTML = `
-          <div class="${cardClass}">
-            <div class="card-header">
-              <div class="op-name" style="${nameStyle}">${row["職"]}</div>
-            </div>
-            <div class="stat-row"><span>人数:</span> <span>${row["人数"]} 名</span></div>
-            <div class="stat-row"><span>全特化完了:</span> <span>${row["全特化人数"]} 名</span></div>
-            <div class="stat-row"><span>特化3 達成率:</span> <span>${tRate}</span></div>
-            <div class="stat-row"><span>完凸人数:</span> <span>${row["完凸人数"]} 名</span></div>
-            <div class="stat-row"><span>完凸 達成率:</span> <span>${pRate}</span></div>
-            <div class="stat-row"><span>潜在合計:</span> <span>${row["潜在合計"]}</span></div>
-          </div>
-        `;
-        container.innerHTML += cardHTML;
+        container.innerHTML += `
+          <div class="card ${isTotal ? 'total-card' : ''}">
+            <div class="card-header"><div class="op-name" style="${isTotal ? 'color:#00a8ff' : ''}">${row["職"]}</div></div>
+            <div class="stat-row"><span>人数:</span><span>${row["人数"]} 名</span></div>
+            <div class="stat-row"><span>特化3率:</span><span>${typeof row["特化3率"]==='number'?(row["特化3率"]*100).toFixed(1)+'%':row["特化3率"]}</span></div>
+            <div class="stat-row"><span>完凸率:</span><span>${typeof row["完凸率"]==='number'?(row["完凸率"]*100).toFixed(1)+'%':row["完凸率"]}</span></div>
+          </div>`;
       });
     }
 
     function renderCards(className) {
       const container = document.getElementById("cardContainer");
-      container.innerHTML = ""; 
-
-      const ops = opData[className];
-      if (!ops) return;
-
-      ops.forEach(op => {
-        const s1 = op["S1"] == 3 ? `<span class="highlight">M3</span>` : (op["S1"] || "-");
-        const s2 = op["S2"] == 3 ? `<span class="highlight">M3</span>` : (op["S2"] || "-");
-        const s3 = op["S3"] == 3 ? `<span class="highlight">M3</span>` : (op["S3"] || "-");
-        
+      container.innerHTML = "";
+      (opData[className] || []).forEach(op => {
         const pot = op["潜在"] >= 6 ? `<span class="highlight">完凸</span>(${op["潜在"]})` : op["潜在"];
-
         let mods = [];
-        if (op["X"] && op["X"] !== "-") mods.push(`X${op["X"]}`);
-        if (op["Y"] && op["Y"] !== "-") mods.push(`Y${op["Y"]}`);
-        if (op["Δ"] && op["Δ"] !== "-") mods.push(`Δ${op["Δ"]}`);
-        if (op["α"] && op["α"] !== "-") mods.push(`α${op["α"]}`);
-        const modText = mods.length > 0 ? `<span class="highlight">${mods.join(" / ")}</span>` : "-";
-
-        const cardHTML = `
+        ["X","Y","Δ","α"].forEach(m => { if(op[m] && op[m] !== "-") mods.push(m+op[m]); });
+        
+        container.innerHTML += `
           <div class="card">
             <div class="card-header">
               <div class="op-name">${op["オペレーター名"]}</div>
               <div class="op-badges">
                 <span>Lv<span class="highlight">${op["Lv"]}</span></span>
-                <span>潜在:${pot}</span>
+                <span>潜在:${pot}<span class="req-icon" onclick="requestSupport('${op["オペレーター名"].replace(/'/g, "\\'")}')">👤+</span></span>
               </div>
             </div>
-            
             <div class="card-body">
-              <div class="module-box">
-                <span class="module-label">MOD</span>
-                <span class="module-value">${modText}</span>
-              </div>
+              <div class="module-box"><span class="module-label">MOD</span><span class="module-value">${mods.length?`<span class="highlight">${mods.join("/")}</span>`:"-"}</span></div>
               <div class="skills-box">
-                <div class="skill-item"><span class="skill-label">S1</span>${s1}</div>
-                <div class="skill-item"><span class="skill-label">S2</span>${s2}</div>
-                <div class="skill-item"><span class="skill-label">S3</span>${s3}</div>
+                <div class="skill-item"><span class="skill-label">S1</span>${op["S1"]==3?'<span class="highlight">M3</span>':op["S1"]}</div>
+                <div class="skill-item"><span class="skill-label">S2</span>${op["S2"]==3?'<span class="highlight">M3</span>':op["S2"]}</div>
+                <div class="skill-item"><span class="skill-label">S3</span>${op["S3"]==3?'<span class="highlight">M3</span>':op["S3"]}</div>
               </div>
             </div>
-            
-          </div>
-        `;
-        container.innerHTML += cardHTML;
+          </div>`;
       });
     }
-
     window.onload = fetchData;
   </script>
+</body>
+</html>
