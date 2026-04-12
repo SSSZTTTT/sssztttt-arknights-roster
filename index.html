@@ -8,7 +8,7 @@
     /* ダークテーマ・スタイリング */
     body { background-color: #1e1e1e; color: #e0e0e0; font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; }
     
-    /* 上部固定（追従）用のコンテナ */
+    /* 上部固定コンテナ */
     .sticky-top {
       position: sticky;
       top: 0;
@@ -20,24 +20,24 @@
     header { background-color: #111; padding: 10px 20px; text-align: center; border-bottom: 2px solid #00a8ff; }
     h1 { margin: 0; font-size: 1.3rem; letter-spacing: 2px; }
     
-    .tabs { display: flex; overflow-x: auto; background-color: #2a2a2a; padding: 8px; gap: 8px; white-space: nowrap; }
-    .tab-btn { background-color: #444; color: #fff; border: none; padding: 10px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    /* タブコンテナの調整（余白を最小限に） */
+    .tabs { display: flex; overflow-x: auto; background-color: #2a2a2a; padding: 6px 4px; gap: 4px; white-space: nowrap; }
+    
+    /* ボタンの左右余白を削減してコンパクトに */
+    .tab-btn { background-color: #444; color: #fff; border: none; padding: 8px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
     .tab-btn.active { background-color: #00a8ff; color: #000; }
     
     .container { padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
     
-    /* カード全体のレイアウト */
     .card { background-color: #2d2d2d; border: 1px solid #444; border-radius: 6px; padding: 10px 12px; position: relative; display: flex; flex-direction: column; }
     
-    /* カードヘッダー */
     .card-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 4px; margin-bottom: 8px; gap: 4px 8px; }
     .op-name { font-size: 1.05rem; font-weight: bold; color: #fff; word-break: keep-all; }
     .op-badges { font-size: 0.8rem; color: #bbb; display: flex; gap: 8px; align-items: center; margin-left: auto; }
     
-    /* ★ハイライト色の統一（水色＋少し発光） */
-    .highlight { color: #00e5ff; font-weight: bold; text-shadow: 0 0 3px rgba(0, 229, 255, 0.4); }
+    /* ★ハイライト色を「白」に変更し、薄い青の光彩で浮かび上がらせる */
+    .highlight { color: #ffffff; font-weight: bold; text-shadow: 0 0 5px rgba(0, 168, 255, 0.8); }
     
-    /* カードボディ */
     .card-body { display: flex; gap: 8px; margin-top: auto; }
     .module-box { flex: 0 0 35%; background-color: #1a1a1a; border: 1px solid #333; border-radius: 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 4px 2px; }
     .module-label { font-size: 0.65rem; color: #888; }
@@ -72,7 +72,6 @@
     .btn-cancel { background: #444; color: #ccc; }
     .btn-confirm { background: #00a8ff; color: #000; }
 
-    /* PC・タブレット向け調整 */
     @media (min-width: 600px) {
       .card-header { flex-direction: column; align-items: flex-start; }
       .op-badges { margin-left: 0; margin-top: 4px; }
@@ -99,7 +98,7 @@
   <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycby6tdhjMeqZm6YZGDwEd5hZJX4wtTec_rH5OsGD5zqKXxlpL9itGtBFIYzUcTDRxkVU/exec";
     const GCF_URL = "https://discord-proxy-420879855582.asia-northeast1.run.app";
-    const COOLDOWN_MS = 3 * 60 * 1000; // 3分間のクールダウン
+    const COOLDOWN_MS = 3 * 60 * 1000;
 
     let opData = {};
     let isTabsCreated = false;
@@ -137,9 +136,7 @@
       if (isTabsCreated) return;
       const tabContainer = document.getElementById("tabContainer");
       let htmlString = "";
-      
       const classes = ["先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊", "集計"];
-      
       classes.forEach((cls, index) => {
         const isActive = index === 0 ? " active" : "";
         htmlString += `<button class="tab-btn${isActive}" onclick="switchTab('${cls}', this)">${cls}</button>`;
@@ -151,7 +148,6 @@
     function switchTab(cls, btnElement) {
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
       btnElement.classList.add("active");
-      // ページの上部にスクロールを戻す
       window.scrollTo({ top: 0, behavior: 'smooth' });
       if (cls === "集計") renderSummary(); else renderCards(cls);
     }
@@ -160,9 +156,7 @@
       const modal = document.getElementById("customModal");
       const msgDiv = document.getElementById("modalMessage");
       const btnsDiv = document.getElementById("modalButtons");
-      
       msgDiv.innerHTML = msg;
-      
       if (isConfirm) {
         btnsDiv.innerHTML = `
           <button class="modal-btn btn-cancel" onclick="closeModal()">キャンセル</button>
@@ -186,10 +180,8 @@
         showModal(`連続送信は制限されています。<br>あと ${remainSec} 秒お待ちください。`, false);
         return;
       }
-
       showModal(`「${opName}」をサポートに出すよう<br>リクエストしますか？`, true, () => {
         showModal("⏳ 送信中...", false);
-        
         fetch(GCF_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -235,7 +227,6 @@
         
         const safeOpName = op["オペレーター名"].replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         
-        // ★スキルのM3も同じ「highlight」クラスで水色に
         const s1HTML = op["S1"] == 3 ? '<span class="highlight">M3</span>' : op["S1"];
         const s2HTML = op["S2"] == 3 ? '<span class="highlight">M3</span>' : op["S2"];
         const s3HTML = op["S3"] == 3 ? '<span class="highlight">M3</span>' : op["S3"];
