@@ -17,13 +17,27 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.5);
     }
 
-    header { background-color: #111; padding: 10px 20px; text-align: center; border-bottom: 2px solid #00a8ff; }
+    /* ★変更：ヘッダーを横並びにし、集計ボタンのスペースを確保 */
+    header { 
+      background-color: #111; padding: 10px 20px; 
+      display: flex; justify-content: space-between; align-items: center; 
+      border-bottom: 2px solid #00a8ff; 
+    }
     h1 { margin: 0; font-size: 1.3rem; letter-spacing: 2px; }
     
-    /* タブコンテナの調整（余白を最小限に） */
+    /* ★新規：集計ボタンの専用デザイン */
+    .summary-btn { 
+      background-color: transparent; color: #00a8ff; 
+      border: 1px solid #00a8ff; padding: 6px 12px; 
+      border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; 
+      transition: 0.2s;
+    }
+    .summary-btn:active { background-color: #00a8ff; color: #000; transform: scale(0.95); }
+
+    /* タブコンテナ（余白を最小限に） */
     .tabs { display: flex; overflow-x: auto; background-color: #2a2a2a; padding: 6px 4px; gap: 4px; white-space: nowrap; }
     
-    /* ボタンの左右余白を削減してコンパクトに */
+    /* タブボタン（コンパクト） */
     .tab-btn { background-color: #444; color: #fff; border: none; padding: 8px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
     .tab-btn.active { background-color: #00a8ff; color: #000; }
     
@@ -35,7 +49,7 @@
     .op-name { font-size: 1.05rem; font-weight: bold; color: #fff; word-break: keep-all; }
     .op-badges { font-size: 0.8rem; color: #bbb; display: flex; gap: 8px; align-items: center; margin-left: auto; }
     
-    /* ★ハイライト色を「白」に変更し、薄い青の光彩で浮かび上がらせる */
+    /* ハイライト色：白＋青い光彩 */
     .highlight { color: #ffffff; font-weight: bold; text-shadow: 0 0 5px rgba(0, 168, 255, 0.8); }
     
     .card-body { display: flex; gap: 8px; margin-top: auto; }
@@ -81,7 +95,10 @@
 <body>
 
   <div class="sticky-top">
-    <header><h1>★6 育成記録</h1></header>
+    <header>
+      <h1>★6 育成記録</h1>
+      <button class="summary-btn" onclick="showSummary()">📊 集計</button>
+    </header>
     <div class="tabs" id="tabContainer"></div>
   </div>
 
@@ -120,9 +137,10 @@
           localStorage.setItem("arknightsRosterCache", JSON.stringify(newData));
           document.getElementById("loading").style.display = "none";
           createTabs();
+          // 初期表示を更新
           const activeTabBtn = document.querySelector(".tab-btn.active");
           const tabName = activeTabBtn ? activeTabBtn.innerText : "先鋒";
-          if (tabName === "集計") renderSummary(); else renderCards(tabName);
+          renderCards(tabName);
         }
       } catch (e) { 
         console.error(e);
@@ -136,7 +154,8 @@
       if (isTabsCreated) return;
       const tabContainer = document.getElementById("tabContainer");
       let htmlString = "";
-      const classes = ["先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊", "集計"];
+      // ★変更：集計を削除して8職業のみに
+      const classes = ["先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊"];
       classes.forEach((cls, index) => {
         const isActive = index === 0 ? " active" : "";
         htmlString += `<button class="tab-btn${isActive}" onclick="switchTab('${cls}', this)">${cls}</button>`;
@@ -145,11 +164,19 @@
       isTabsCreated = true;
     }
 
+    // 職業タブ切り替え
     function switchTab(cls, btnElement) {
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-      btnElement.classList.add("active");
+      if(btnElement) btnElement.classList.add("active");
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      if (cls === "集計") renderSummary(); else renderCards(cls);
+      renderCards(cls);
+    }
+
+    // ★新規：集計ボタン用の関数
+    function showSummary() {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      renderSummary();
     }
 
     function showModal(msg, isConfirm, onConfirmCallback) {
