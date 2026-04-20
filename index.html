@@ -5,16 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>★6 育成記録</title>
   <style>
-    /* ダークテーマ・スタイリング */
     body { background-color: #1e1e1e; color: #e0e0e0; font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; }
     
-    /* 上部固定コンテナ */
     .sticky-top {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background-color: #1e1e1e;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+      position: sticky; top: 0; z-index: 100;
+      background-color: #1e1e1e; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
     }
 
     header { 
@@ -24,23 +19,20 @@
     }
     h1 { margin: 0; font-size: 1.3rem; letter-spacing: 2px; }
     
+    /* ヘッダー右側のボタン用コンテナ */
+    .header-btns { display: flex; gap: 8px; }
+    
     .summary-btn { 
       background-color: transparent; color: #00a8ff; 
-      border: 1px solid #00a8ff; padding: 6px 12px; 
+      border: 1px solid #00a8ff; padding: 6px 10px; 
       border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; 
-      transition: 0.2s;
+      transition: 0.2s; white-space: nowrap;
     }
     .summary-btn:active { background-color: #00a8ff; color: #000; transform: scale(0.95); }
 
-    /* ★変更：中央揃え (justify-content: center) を追加 */
     .tabs { 
-      display: flex; 
-      overflow-x: auto; 
-      background-color: #2a2a2a; 
-      padding: 6px 4px; 
-      gap: 4px; 
-      white-space: nowrap; 
-      justify-content: center; 
+      display: flex; overflow-x: auto; background-color: #2a2a2a; 
+      padding: 6px 4px; gap: 4px; white-space: nowrap; justify-content: center; 
     }
     
     .tab-btn { background-color: #444; color: #fff; border: none; padding: 8px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
@@ -48,8 +40,13 @@
     
     .container { padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
     
+    /* 履歴リスト専用のデザイン */
+    .history-card { background-color: #2d2d2d; border-left: 4px solid #00a8ff; border-radius: 6px; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .history-time { font-size: 0.85rem; color: #bbb; }
+    .history-name { font-size: 1.05rem; font-weight: bold; color: #fff; }
+    .empty-msg { text-align: center; color: #888; padding: 20px; width: 100%; }
+
     .card { background-color: #2d2d2d; border: 1px solid #444; border-radius: 6px; padding: 10px 12px; position: relative; display: flex; flex-direction: column; }
-    
     .card-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 4px; margin-bottom: 8px; gap: 4px 8px; }
     .op-name { font-size: 1.05rem; font-weight: bold; color: #fff; word-break: keep-all; }
     .op-badges { font-size: 0.8rem; color: #bbb; display: flex; gap: 8px; align-items: center; margin-left: auto; }
@@ -67,22 +64,12 @@
     .stat-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px; }
     .total-card { border: 1px solid #00a8ff; }
     
-    .req-icon {
-      cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
-      background-color: #444; color: #00a8ff; border: 1px solid #00a8ff;
-      border-radius: 4px; padding: 1px 6px; margin-left: 6px; font-size: 0.85rem; transition: 0.2s;
-    }
+    .req-icon { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; background-color: #444; color: #00a8ff; border: 1px solid #00a8ff; border-radius: 4px; padding: 1px 6px; margin-left: 6px; font-size: 0.85rem; transition: 0.2s; }
     .req-icon:active { transform: scale(0.9); background-color: #00a8ff; color: #000; }
     .loading { text-align: center; padding: 30px; color: #888; }
 
-    .modal-overlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 9999;
-    }
-    .modal-content {
-      background-color: #222; border: 1px solid #00a8ff; border-radius: 8px; padding: 20px;
-      text-align: center; min-width: 260px; max-width: 80%; box-shadow: 0 4px 15px rgba(0, 168, 255, 0.2);
-    }
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 9999; }
+    .modal-content { background-color: #222; border: 1px solid #00a8ff; border-radius: 8px; padding: 20px; text-align: center; min-width: 260px; max-width: 80%; box-shadow: 0 4px 15px rgba(0, 168, 255, 0.2); }
     .modal-msg { margin-bottom: 20px; font-size: 1rem; color: #fff; line-height: 1.5; }
     .modal-btns { display: flex; justify-content: center; gap: 15px; }
     .modal-btn { padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; border: none; font-size: 0.95rem; }
@@ -100,7 +87,10 @@
   <div class="sticky-top">
     <header>
       <h1>★6 育成記録</h1>
-      <button class="summary-btn" onclick="toggleSummary()">📊 集計</button>
+      <div class="header-btns">
+        <button class="summary-btn" onclick="toggleSpecialView('履歴')">📜 履歴</button>
+        <button class="summary-btn" onclick="toggleSpecialView('集計')">📊 集計</button>
+      </div>
     </header>
     <div class="tabs" id="tabContainer"></div>
   </div>
@@ -122,10 +112,8 @@
 
     let opData = {};
     let isTabsCreated = false;
-    
-    // ★新規：表示管理用の変数
-    let lastClass = "先鋒"; // 最後に見ていた職業を記録
-    let currentView = "先鋒"; // 現在何を見ているかを記録
+    let lastClass = "先鋒"; 
+    let currentView = "先鋒"; 
 
     async function fetchData() {
       const cachedData = localStorage.getItem("arknightsRosterCache");
@@ -146,7 +134,7 @@
           createTabs();
           const activeTabBtn = document.querySelector(".tab-btn.active");
           const tabName = activeTabBtn ? activeTabBtn.innerText : "先鋒";
-          if (currentView !== "集計") renderCards(tabName);
+          if (currentView !== "集計" && currentView !== "履歴") renderCards(tabName);
         }
       } catch (e) { 
         console.error(e);
@@ -170,32 +158,27 @@
     }
 
     function switchTab(cls, btnElement) {
-      // 職業を切り替えたら「最後に見た職業」として更新
       lastClass = cls;
       currentView = cls;
-      
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
       if(btnElement) btnElement.classList.add("active");
       window.scrollTo({ top: 0, behavior: 'smooth' });
       renderCards(cls);
     }
 
-    // ★変更：集計ボタンのトグル（切り替え）機能
-    function toggleSummary() {
-      if (currentView === "集計") {
-        // すでに集計を見ている場合は、最後に見ていた職業に戻る
+    // 履歴・集計ボタンの共通トグル処理
+    function toggleSpecialView(viewName) {
+      if (currentView === viewName) {
         const tabs = document.querySelectorAll(".tab-btn");
         let targetBtn;
-        tabs.forEach(b => {
-          if (b.innerText === lastClass) targetBtn = b;
-        });
+        tabs.forEach(b => { if (b.innerText === lastClass) targetBtn = b; });
         switchTab(lastClass, targetBtn);
       } else {
-        // 職業を見ている場合は、集計を表示する
-        currentView = "集計";
+        currentView = viewName;
         document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        renderSummary();
+        if (viewName === "集計") renderSummary();
+        if (viewName === "履歴") renderHistory();
       }
     }
 
@@ -205,10 +188,7 @@
       const btnsDiv = document.getElementById("modalButtons");
       msgDiv.innerHTML = msg;
       if (isConfirm) {
-        btnsDiv.innerHTML = `
-          <button class="modal-btn btn-cancel" onclick="closeModal()">キャンセル</button>
-          <button class="modal-btn btn-confirm" id="confirmBtn">リクエスト</button>
-        `;
+        btnsDiv.innerHTML = `<button class="modal-btn btn-cancel" onclick="closeModal()">キャンセル</button><button class="modal-btn btn-confirm" id="confirmBtn">リクエスト</button>`;
         document.getElementById("confirmBtn").onclick = () => { onConfirmCallback(); };
       } else {
         btnsDiv.innerHTML = `<button class="modal-btn btn-confirm" onclick="closeModal()">OK</button>`;
@@ -216,9 +196,7 @@
       modal.style.display = "flex";
     }
 
-    function closeModal() {
-      document.getElementById("customModal").style.display = "none";
-    }
+    function closeModal() { document.getElementById("customModal").style.display = "none"; }
 
     function requestSupport(opName) {
       const lastReqTime = localStorage.getItem("lastSupportRequestTime");
@@ -233,18 +211,18 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ opName: opName })
-        })
-        .then(res => {
+        }).then(res => {
           if (res.ok) {
             localStorage.setItem("lastSupportRequestTime", Date.now().toString());
             showModal("✅ リクエストを送信しました！", false);
+            // 履歴画面を開いている場合は、最新のデータを取得し直す
+            if(currentView === "履歴" || currentView === "集計") {
+               fetchData();
+            }
           } else {
             showModal("❌ 送信に失敗しました。<br>少し時間をおいてください。", false);
           }
-        })
-        .catch(() => {
-          showModal("❌ 通信エラーが発生しました。", false);
-        });
+        }).catch(() => { showModal("❌ 通信エラーが発生しました。", false); });
       });
     }
 
@@ -264,6 +242,26 @@
       container.innerHTML = htmlString;
     }
 
+    // ★新規：履歴を描画する関数
+    function renderHistory() {
+      const container = document.getElementById("cardContainer");
+      let htmlString = "";
+      const historyList = opData["履歴"] || [];
+      
+      if (historyList.length === 0) {
+        htmlString = `<div class="empty-msg">まだリクエスト履歴がありません</div>`;
+      } else {
+        historyList.forEach(log => {
+          htmlString += `
+            <div class="history-card">
+              <span class="history-time">${log.time}</span>
+              <span class="history-name">${log.name}</span>
+            </div>`;
+        });
+      }
+      container.innerHTML = htmlString;
+    }
+
     function renderCards(className) {
       const container = document.getElementById("cardContainer");
       let htmlString = "";
@@ -273,7 +271,6 @@
         ["X","Y","Δ","α"].forEach(m => { if(op[m] && op[m] !== "-") mods.push(m+op[m]); });
         
         const safeOpName = op["オペレーター名"].replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        
         const s1HTML = op["S1"] == 3 ? '<span class="highlight">M3</span>' : op["S1"];
         const s2HTML = op["S2"] == 3 ? '<span class="highlight">M3</span>' : op["S2"];
         const s3HTML = op["S3"] == 3 ? '<span class="highlight">M3</span>' : op["S3"];
