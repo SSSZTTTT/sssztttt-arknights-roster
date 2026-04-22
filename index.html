@@ -59,7 +59,19 @@
     .skill-item { text-align: center; font-size: 0.95rem; }
     .skill-label { font-size: 0.65rem; color: #888; display: block; }
     
-    .stat-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px; }
+    /* ★変更：集計の数値を綺麗に整列させるためのGrid設定 */
+    .stat-row { 
+      display: grid; 
+      grid-template-columns: 1fr 45px 20px; /* 項目名(残り全部) / 数字(45px) / 単位(20px) */
+      gap: 4px;
+      font-size: 0.85rem; 
+      margin-bottom: 4px; 
+      align-items: center; 
+    }
+    .stat-row > span:nth-child(1) { color: #bbb; }
+    .stat-row > span:nth-child(2) { text-align: right; font-weight: bold; font-variant-numeric: tabular-nums; }
+    .stat-row > span:nth-child(3) { text-align: left; color: #888; font-size: 0.8rem; }
+    
     .total-card { border: 1px solid #00a8ff; }
     
     .req-icon { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; background-color: #444; color: #00a8ff; border: 1px solid #00a8ff; border-radius: 4px; padding: 1px 6px; margin-left: 6px; font-size: 0.85rem; transition: 0.2s; }
@@ -222,21 +234,26 @@
       });
     }
 
-    // ★並び順をご指定通りに変更しました
+    // ★変更：集計のHTMLを3つのスパン（名称 / 数値 / 単位）に分割
     function renderSummary() {
       const container = document.getElementById("cardContainer");
       let htmlString = "";
       (opData["集計"] || []).forEach(row => {
         const isTotal = row["職"] === "全職合計";
+        
+        // 率のフォーマット（エラー回避）
+        const m3Rate = typeof row["特化3率"] === 'number' ? (row["特化3率"] * 100).toFixed(1) : (row["特化3率"] || "0.0");
+        const potRate = typeof row["完凸率"] === 'number' ? (row["完凸率"] * 100).toFixed(1) : (row["完凸率"] || "0.0");
+
         htmlString += `
           <div class="card ${isTotal ? 'total-card' : ''}">
             <div class="card-header"><div class="op-name" style="${isTotal ? 'color:#00a8ff' : ''}">${row["職"]}</div></div>
-            <div class="stat-row"><span>人数:</span><span>${row["人数"]} 名</span></div>
-            <div class="stat-row"><span>特化3スキル数:</span><span>${row["特化3スキル数"]} 個</span></div>
-            <div class="stat-row"><span>特化3率:</span><span>${typeof row["特化3率"]==='number'?(row["特化3率"]*100).toFixed(1)+'%':row["特化3率"]}</span></div>
-            <div class="stat-row"><span>全特化人数:</span><span>${row["全特化人数"]} 名</span></div>
-            <div class="stat-row"><span>完凸人数:</span><span>${row["完凸人数"]} 名</span></div>
-            <div class="stat-row"><span>完凸率:</span><span>${typeof row["完凸率"]==='number'?(row["完凸率"]*100).toFixed(1)+'%':row["完凸率"]}</span></div>
+            <div class="stat-row"><span>人数:</span><span>${row["人数"] || 0}</span><span>名</span></div>
+            <div class="stat-row"><span>特化3スキル数:</span><span>${row["特化3スキル数"] || 0}</span><span>個</span></div>
+            <div class="stat-row"><span>特化3率:</span><span>${m3Rate}</span><span>%</span></div>
+            <div class="stat-row"><span>全特化人数:</span><span>${row["全特化人数"] || 0}</span><span>名</span></div>
+            <div class="stat-row"><span>完凸人数:</span><span>${row["完凸人数"] || 0}</span><span>名</span></div>
+            <div class="stat-row"><span>完凸率:</span><span>${potRate}</span><span>%</span></div>
           </div>`;
       });
       container.innerHTML = htmlString;
