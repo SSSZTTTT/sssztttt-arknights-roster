@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>アークナイツ 育成記録</title>
+  <title>★6 育成記録</title>
   <style>
     body { background-color: #1e1e1e; color: #e0e0e0; font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; }
     
@@ -33,32 +33,22 @@
       display: flex; overflow-x: auto; background-color: #2a2a2a; 
       padding: 6px 4px; gap: 4px; white-space: nowrap; justify-content: center; 
     }
+    
     .tab-btn { background-color: #444; color: #fff; border: none; padding: 8px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
     .tab-btn.active { background-color: #00a8ff; color: #000; }
     
-    .filter-bar {
-      display: flex; justify-content: center; gap: 6px; background-color: #1a1a1a; padding: 6px; border-bottom: 1px solid #333;
-    }
-    .filter-btn {
-      background-color: #333; color: #ccc; border: 1px solid #555; border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer; font-weight: bold;
-    }
-    .filter-btn.active {
-      background-color: #fff; color: #000; border-color: #fff;
-    }
-
     .container { padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
     
+    .history-card { background-color: #2d2d2d; border-left: 4px solid #00a8ff; border-radius: 6px; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .history-time { font-size: 0.85rem; color: #bbb; }
+    .history-name { font-size: 1.05rem; font-weight: bold; color: #fff; }
+    .empty-msg { text-align: center; color: #888; padding: 20px; width: 100%; }
+
     .card { background-color: #2d2d2d; border: 1px solid #444; border-radius: 6px; padding: 10px 12px; position: relative; display: flex; flex-direction: column; }
     .card-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 4px; margin-bottom: 8px; gap: 4px 8px; }
-    
-    .op-name-block { display: flex; flex-direction: column; }
     .op-name { font-size: 1.05rem; font-weight: bold; color: #fff; word-break: keep-all; }
-    .op-stars { font-size: 0.7rem; margin-top: 2px; }
-    .stars-6 { color: #ff9f43; text-shadow: 0 0 3px rgba(255,159,67,0.5); }
-    .stars-5 { color: #feca57; }
-    .stars-low { color: #95a5a6; }
-
     .op-badges { font-size: 0.8rem; color: #bbb; display: flex; gap: 8px; align-items: center; margin-left: auto; }
+    
     .highlight { color: #ffffff; font-weight: bold; text-shadow: 0 0 5px rgba(0, 168, 255, 0.8); }
     
     .card-body { display: flex; gap: 8px; margin-top: auto; }
@@ -69,17 +59,21 @@
     .skill-item { text-align: center; font-size: 0.95rem; }
     .skill-label { font-size: 0.65rem; color: #888; display: block; }
     
-    .stat-row { display: grid; grid-template-columns: 1fr 45px 20px; gap: 4px; font-size: 0.85rem; margin-bottom: 4px; align-items: center; }
+    /* ★変更：集計の数値を綺麗に整列させるためのGrid設定 */
+    .stat-row { 
+      display: grid; 
+      grid-template-columns: 1fr 45px 20px; /* 項目名(残り全部) / 数字(45px) / 単位(20px) */
+      gap: 4px;
+      font-size: 0.85rem; 
+      margin-bottom: 4px; 
+      align-items: center; 
+    }
     .stat-row > span:nth-child(1) { color: #bbb; }
     .stat-row > span:nth-child(2) { text-align: right; font-weight: bold; font-variant-numeric: tabular-nums; }
     .stat-row > span:nth-child(3) { text-align: left; color: #888; font-size: 0.8rem; }
     
     .total-card { border: 1px solid #00a8ff; }
-    .history-card { background-color: #2d2d2d; border-left: 4px solid #00a8ff; border-radius: 6px; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
-    .history-time { font-size: 0.85rem; color: #bbb; }
-    .history-name { font-size: 1.05rem; font-weight: bold; color: #fff; }
-    .empty-msg { text-align: center; color: #888; padding: 20px; width: 100%; }
-
+    
     .req-icon { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; background-color: #444; color: #00a8ff; border: 1px solid #00a8ff; border-radius: 4px; padding: 1px 6px; margin-left: 6px; font-size: 0.85rem; transition: 0.2s; }
     .req-icon:active { transform: scale(0.9); background-color: #00a8ff; color: #000; }
     .loading { text-align: center; padding: 30px; color: #888; }
@@ -102,19 +96,13 @@
 
   <div class="sticky-top">
     <header>
-      <h1>アークナイツ 育成記録</h1>
+      <h1>★6 育成記録</h1>
       <div class="header-btns">
         <button class="summary-btn" onclick="toggleSpecialView('履歴')">履歴</button>
         <button class="summary-btn" onclick="toggleSpecialView('集計')">集計</button>
       </div>
     </header>
     <div class="tabs" id="tabContainer"></div>
-    <div class="filter-bar" id="filterBar">
-      <button class="filter-btn active" onclick="setRarityFilter('all', this)">すべて</button>
-      <button class="filter-btn" onclick="setRarityFilter('6', this)">★6</button>
-      <button class="filter-btn" onclick="setRarityFilter('5', this)">★5</button>
-      <button class="filter-btn" onclick="setRarityFilter('low', this)">★4以下</button>
-    </div>
   </div>
 
   <div id="loading" class="loading">データを取得中...</div>
@@ -128,22 +116,17 @@
   </div>
 
   <script>
-    // ==========================================
-    // ⚠️ ご自身の环境のURLに書き換えてください
-    // ==========================================
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbw-2XJgASoLsUFL-KxWqnmmynGVwbF2j82uB0XzXlw9I_p4dWU2zxr-_HF3_8l9DdwDwA/exec";
-    const GCF_URL = "https://ark-420879855582.asia-northeast1.run.app";
-    
-    const COOLDOWN_MS = 3 * 60 * 1000; // フロント側の連打対策（3分）
+    const GAS_URL = "https://script.google.com/macros/s/AKfycby6tdhjMeqZm6YZGDwEd5hZJX4wtTec_rH5OsGD5zqKXxlpL9itGtBFIYzUcTDRxkVU/exec";
+    const GCF_URL = "https://discord-proxy-420879855582.asia-northeast1.run.app";
+    const COOLDOWN_MS = 3 * 60 * 1000;
 
     let opData = {};
     let isTabsCreated = false;
     let lastClass = "先鋒"; 
-    let currentView = "先鋒";
-    let currentRarityFilter = "all";
+    let currentView = "先鋒"; 
 
     async function fetchData() {
-      const cachedData = localStorage.getItem("arknightsRosterCacheAll");
+      const cachedData = localStorage.getItem("arknightsRosterCache");
       if (cachedData) {
         opData = JSON.parse(cachedData);
         document.getElementById("loading").style.display = "none";
@@ -156,7 +139,7 @@
         const newData = await response.json();
         if (JSON.stringify(opData) !== JSON.stringify(newData)) {
           opData = newData;
-          localStorage.setItem("arknightsRosterCacheAll", JSON.stringify(newData));
+          localStorage.setItem("arknightsRosterCache", JSON.stringify(newData));
           document.getElementById("loading").style.display = "none";
           createTabs();
           const activeTabBtn = document.querySelector(".tab-btn.active");
@@ -166,7 +149,7 @@
       } catch (e) { 
         console.error(e);
         if (!cachedData) {
-          document.getElementById("loading").innerText = "データの取得に失敗しました。再読み込みしてください。";
+          document.getElementById("loading").innerText = "データの取得に失敗しました。時間をおいて再読み込みしてください。";
         }
       }
     }
@@ -187,20 +170,10 @@
     function switchTab(cls, btnElement) {
       lastClass = cls;
       currentView = cls;
-      document.getElementById("filterBar").style.display = "flex";
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
       if(btnElement) btnElement.classList.add("active");
       window.scrollTo({ top: 0, behavior: 'smooth' });
       renderCards(cls);
-    }
-
-    function setRarityFilter(filterType, btnElement) {
-      currentRarityFilter = filterType;
-      document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
-      if(btnElement) btnElement.classList.add("active");
-      if (currentView !== "集計" && currentView !== "履歴") {
-        renderCards(currentView);
-      }
     }
 
     function toggleSpecialView(viewName) {
@@ -211,7 +184,6 @@
         switchTab(lastClass, targetBtn);
       } else {
         currentView = viewName;
-        document.getElementById("filterBar").style.display = "none";
         document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
         window.scrollTo({ top: 0, behavior: 'smooth' });
         if (viewName === "集計") renderSummary();
@@ -236,7 +208,7 @@
     function closeModal() { document.getElementById("customModal").style.display = "none"; }
 
     function requestSupport(opName) {
-      const lastReqTime = localStorage.getItem("lastSupportRequestTimeAll");
+      const lastReqTime = localStorage.getItem("lastSupportRequestTime");
       if (lastReqTime && (Date.now() - parseInt(lastReqTime)) < COOLDOWN_MS) {
         const remainSec = Math.ceil((COOLDOWN_MS - (Date.now() - parseInt(lastReqTime))) / 1000);
         showModal(`連続送信は制限されています。<br>あと ${remainSec} 秒お待ちください。`, false);
@@ -250,23 +222,26 @@
           body: JSON.stringify({ opName: opName })
         }).then(res => {
           if (res.ok) {
-            localStorage.setItem("lastSupportRequestTimeAll", Date.now().toString());
+            localStorage.setItem("lastSupportRequestTime", Date.now().toString());
             showModal("✅ リクエストを送信しました！", false);
             if(currentView === "履歴" || currentView === "集計") {
                fetchData();
             }
           } else {
-            showModal("❌ 送信に失敗しました。<br>3分間の制限中か、時間をおいてお試しください。", false);
+            showModal("❌ 送信に失敗しました。<br>少し時間をおいてください。", false);
           }
         }).catch(() => { showModal("❌ 通信エラーが発生しました。", false); });
       });
     }
 
+    // ★変更：集計のHTMLを3つのスパン（名称 / 数値 / 単位）に分割
     function renderSummary() {
       const container = document.getElementById("cardContainer");
       let htmlString = "";
       (opData["集計"] || []).forEach(row => {
         const isTotal = row["職"] === "全職合計";
+        
+        // 率のフォーマット（エラー回避）
         const m3Rate = typeof row["特化3率"] === 'number' ? (row["特化3率"] * 100).toFixed(1) : (row["特化3率"] || "0.0");
         const potRate = typeof row["完凸率"] === 'number' ? (row["完凸率"] * 100).toFixed(1) : (row["完凸率"] || "0.0");
 
@@ -305,53 +280,20 @@
     function renderCards(className) {
       const container = document.getElementById("cardContainer");
       let htmlString = "";
-      let list = opData[className] || [];
-
-      if (currentRarityFilter === "6") {
-        list = list.filter(op => parseInt(op["レア"]) === 6);
-      } else if (currentRarityFilter === "5") {
-        list = list.filter(op => parseInt(op["レア"]) === 5);
-      } else if (currentRarityFilter === "low") {
-        list = list.filter(op => parseInt(op["レア"]) <= 4);
-      }
-
-      if (list.length === 0) {
-        container.innerHTML = `<div class="empty-msg">該当するオペレーターはいません</div>`;
-        return;
-      }
-
-      list.forEach(op => {
-        const rarityNum = parseInt(op["レア"], 10) || 0;
-        
-        let starHTML = "";
-        if (rarityNum === 6) {
-          starHTML = `<span class="op-stars stars-6">${"★".repeat(6)}</span>`;
-        } else if (rarityNum === 5) {
-          starHTML = `<span class="op-stars stars-5">${"★".repeat(5)}</span>`;
-        } else {
-          starHTML = `<span class="op-stars stars-low">${"★".repeat(rarityNum)}</span>`;
-        }
-
-        const pot = op["潜在"] >= 6 ? `<span class="highlight">完凸</span>(${op["潜在"]})` : (op["潜在"] || "-");
-        
+      (opData[className] || []).forEach(op => {
+        const pot = op["潜在"] >= 6 ? `<span class="highlight">完凸</span>(${op["潜在"]})` : op["潜在"];
         let mods = [];
         ["X","Y","Δ","α"].forEach(m => { if(op[m] && op[m] !== "-") mods.push(m+op[m]); });
-        
         const safeOpName = op["オペレーター名"].replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        
-        const s1HTML = op["S1"] == 3 ? '<span class="highlight">M3</span>' : (op["S1"] || "-");
-        const s2HTML = op["S2"] == 3 ? '<span class="highlight">M3</span>' : (op["S2"] || "-");
-        const s3HTML = op["S3"] == 3 ? '<span class="highlight">M3</span>' : (op["S3"] || "-");
-
+        const s1HTML = op["S1"] == 3 ? '<span class="highlight">M3</span>' : op["S1"];
+        const s2HTML = op["S2"] == 3 ? '<span class="highlight">M3</span>' : op["S2"];
+        const s3HTML = op["S3"] == 3 ? '<span class="highlight">M3</span>' : op["S3"];
         htmlString += `
           <div class="card">
             <div class="card-header">
-              <div class="op-name-block">
-                <div class="op-name">${op["オペレーター名"]}</div>
-                ${starHTML}
-              </div>
+              <div class="op-name">${op["オペレーター名"]}</div>
               <div class="op-badges">
-                <span>Lv<span class="highlight">${op["Lv"] || "-"}</span></span>
+                <span>Lv<span class="highlight">${op["Lv"]}</span></span>
                 <span>潜在:${pot}<span class="req-icon" onclick="requestSupport('${safeOpName}')">👤+</span></span>
               </div>
             </div>
