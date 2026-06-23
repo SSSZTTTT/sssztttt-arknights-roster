@@ -129,12 +129,12 @@
 
   <script>
     // ==========================================
-    // ⚠️ ご自身の环境のURLに書き換えてください
+    // ⚠️ ご自身の環境のURLに書き換えてください
     // ==========================================
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbw-2XJgASoLsUFL-KxWqnmmynGVwbF2j82uB0XzXlw9I_p4dWU2zxr-_HF3_8l9DdwDwA/exec";
-    const GCF_URL = "https://ark-420879855582.asia-northeast1.run.app";
+    const GAS_URL = "ここに新しくデプロイした全レアリティ対応GASのウェブアプリURLを貼り付け";
+    const GCF_URL = "ここにCloud Runデプロイ後に発行されたService URLを貼り付け";
     
-    const COOLDOWN_MS = 3 * 60 * 1000; // フロント側の連打対策（3分）
+    const COOLDOWN_MS = 3 * 60 * 1000;
 
     let opData = {};
     let isTabsCreated = false;
@@ -194,6 +194,7 @@
       renderCards(cls);
     }
 
+    // レアリティフィルター
     function setRarityFilter(filterType, btnElement) {
       currentRarityFilter = filterType;
       document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
@@ -343,6 +344,15 @@
         const s2HTML = op["S2"] == 3 ? '<span class="highlight">M3</span>' : (op["S2"] || "-");
         const s3HTML = op["S3"] == 3 ? '<span class="highlight">M3</span>' : (op["S3"] || "-");
 
+        // ★新機能：昇進データの数字（0, 1, 2）をWEB表示用に装飾
+        const promoteNum = op["昇進"];
+        let promoteHTML = "";
+        if (promoteNum === "-") {
+          promoteHTML = "<span>-</span>";
+        } else {
+          promoteHTML = `<span>昇進<span class="highlight">${promoteNum}</span></span>`;
+        }
+
         htmlString += `
           <div class="card">
             <div class="card-header">
@@ -351,6 +361,7 @@
                 ${starHTML}
               </div>
               <div class="op-badges">
+                ${promoteHTML}
                 <span>Lv<span class="highlight">${op["Lv"] || "-"}</span></span>
                 <span>潜在:${pot}<span class="req-icon" onclick="requestSupport('${safeOpName}')">👤+</span></span>
               </div>
