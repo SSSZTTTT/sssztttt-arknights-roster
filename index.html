@@ -61,6 +61,10 @@
     .op-badges { font-size: 0.8rem; color: #bbb; display: flex; gap: 8px; align-items: center; margin-left: auto; }
     .highlight { color: #ffffff; font-weight: bold; text-shadow: 0 0 5px rgba(0, 168, 255, 0.8); }
     
+    /* 特化段階ごとの専用ライトアップカラー */
+    .m3-highlight { color: #ff9f43; font-weight: bold; text-shadow: 0 0 5px rgba(255, 159, 67, 0.8); }
+    .m-highlight { color: #feca57; font-weight: bold; text-shadow: 0 0 3px rgba(254, 202, 87, 0.5); }
+
     .card-body { display: flex; gap: 8px; margin-top: auto; }
     .module-box { flex: 0 0 35%; background-color: #1a1a1a; border: 1px solid #333; border-radius: 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 4px 2px; }
     .module-label { font-size: 0.65rem; color: #888; }
@@ -128,9 +132,9 @@
   </div>
 
   <script>
-    // ==========================================
-    // ⚠️ ご自身の環境のURLに書き換えてください
-    // ==========================================
+    // =========================================================================
+    // ⚠️ 以下の2行をご自身の本物のURL（https://...）に必ず書き換えてください！
+    // =========================================================================
     const GAS_URL = "https://script.google.com/macros/s/AKfycbw-2XJgASoLsUFL-KxWqnmmynGVwbF2j82uB0XzXlw9I_p4dWU2zxr-_HF3_8l9DdwDwA/exec";
     const GCF_URL = "https://ark-420879855582.asia-northeast1.run.app";
     
@@ -194,7 +198,6 @@
       renderCards(cls);
     }
 
-    // レアリティフィルター
     function setRarityFilter(filterType, btnElement) {
       currentRarityFilter = filterType;
       document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
@@ -303,6 +306,22 @@
       container.innerHTML = htmlString;
     }
 
+    // ★ 汎用的なスキル表示成形関数を追加（1〜7、M1〜M3に完全対応）
+    function formatSkillValue(val) {
+      const cleanVal = (val || "").toString().trim();
+      if (!cleanVal || cleanVal === "-") return "-";
+      
+      if (cleanVal === "M3" || cleanVal === "3") {
+        return '<span class="m3-highlight">M3</span>';
+      } else if (cleanVal === "M2" || cleanVal === "2") {
+        return '<span class="m-highlight">M2</span>';
+      } else if (cleanVal === "M1" || cleanVal === "1") {
+        return '<span class="m-highlight">M1</span>';
+      }
+      // 1〜7などの通常数値はそのまま表示
+      return cleanVal;
+    }
+
     function renderCards(className) {
       const container = document.getElementById("cardContainer");
       let htmlString = "";
@@ -340,14 +359,14 @@
         
         const safeOpName = op["オペレーター名"].replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         
-        const s1HTML = op["S1"] == 3 ? '<span class="highlight">M3</span>' : (op["S1"] || "-");
-        const s2HTML = op["S2"] == 3 ? '<span class="highlight">M3</span>' : (op["S2"] || "-");
-        const s3HTML = op["S3"] == 3 ? '<span class="highlight">M3</span>' : (op["S3"] || "-");
+        // ★新レイアウト：新ロジックを通してスキル枠を生成
+        const s1HTML = formatSkillValue(op["S1"]);
+        const s2HTML = formatSkillValue(op["S2"]);
+        const s3HTML = formatSkillValue(op["S3"]);
 
-        // ★新機能：昇進データの数字（0, 1, 2）をWEB表示用に装飾
         const promoteNum = op["昇進"];
         let promoteHTML = "";
-        if (promoteNum === "-") {
+        if (!promoteNum || promoteNum === "-") {
           promoteHTML = "<span>-</span>";
         } else {
           promoteHTML = `<span>昇進<span class="highlight">${promoteNum}</span></span>`;
