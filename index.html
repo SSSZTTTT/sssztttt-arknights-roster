@@ -61,7 +61,6 @@
     .op-badges { font-size: 0.8rem; color: #bbb; display: flex; gap: 8px; align-items: center; margin-left: auto; }
     .highlight { color: #ffffff; font-weight: bold; text-shadow: 0 0 5px rgba(0, 168, 255, 0.8); }
     
-    /* 特化段階ごとの専用ライトアップカラー */
     .m3-highlight { color: #ff9f43; font-weight: bold; text-shadow: 0 0 5px rgba(255, 159, 67, 0.8); }
     .m-highlight { color: #feca57; font-weight: bold; text-shadow: 0 0 3px rgba(254, 202, 87, 0.5); }
 
@@ -147,31 +146,25 @@
     let currentRarityFilter = "all";
 
     async function fetchData() {
-      const cachedData = localStorage.getItem("arknightsRosterCacheAll");
-      if (cachedData) {
-        opData = JSON.parse(cachedData);
-        document.getElementById("loading").style.display = "none";
-        createTabs();
-        renderCards("先鋒");
-      }
+      // 🛠️ 修正: ブラウザ内キャッシュ(localStorage)の読み込み処理を完全に撤廃
       try {
         const response = await fetch(GAS_URL);
         if (!response.ok) throw new Error("Network Error");
-        const newData = await response.json();
-        if (JSON.stringify(opData) !== JSON.stringify(newData)) {
-          opData = newData;
-          localStorage.setItem("arknightsRosterCacheAll", JSON.stringify(newData));
-          document.getElementById("loading").style.display = "none";
-          createTabs();
-          const activeTabBtn = document.querySelector(".tab-btn.active");
-          const tabName = activeTabBtn ? activeTabBtn.innerText : "先鋒";
-          if (currentView !== "集計" && currentView !== "履歴") renderCards(tabName);
+        opData = await response.json();
+        
+        document.getElementById("loading").style.display = "none";
+        createTabs();
+        
+        if (currentView === "集計") {
+          renderSummary();
+        } else if (currentView === "履歴") {
+          renderHistory();
+        } else {
+          renderCards(currentView);
         }
       } catch (e) { 
         console.error(e);
-        if (!cachedData) {
-          document.getElementById("loading").innerText = "データの取得に失敗しました。再読み込みしてください。";
-        }
+        document.getElementById("loading").innerText = "データの取得に失敗しました。再読み込みしてください。";
       }
     }
 
@@ -256,9 +249,7 @@
           if (res.ok) {
             localStorage.setItem("lastSupportRequestTimeAll", Date.now().toString());
             showModal("✅ リクエストを送信しました！", false);
-            if(currentView === "履歴" || currentView === "集計") {
-               fetchData();
-            }
+            fetchData(); // リアルタイムに履歴を再読込
           } else {
             showModal("❌ 送信に失敗しました。<br>3分間の制限中か、時間をおいてお試しください。", false);
           }
@@ -306,19 +297,12 @@
       container.innerHTML = htmlString;
     }
 
-    // ★ 汎用的なスキル表示成形関数を追加（1〜7、M1〜M3に完全対応）
     function formatSkillValue(val) {
       const cleanVal = (val || "").toString().trim();
       if (!cleanVal || cleanVal === "-") return "-";
-      
-      if (cleanVal === "M3" || cleanVal === "3") {
-        return '<span class="m3-highlight">M3</span>';
-      } else if (cleanVal === "M2" || cleanVal === "2") {
-        return '<span class="m-highlight">M2</span>';
-      } else if (cleanVal === "M1" || cleanVal === "1") {
-        return '<span class="m-highlight">M1</span>';
-      }
-      // 1〜7などの通常数値はそのまま表示
+      if (cleanVal === "M3" || cleanVal === "3") return '<span class="m3-highlight">M3</span>';
+      if (cleanVal === "M2" || cleanVal === "2") return '<span class="m-highlight">M2</span>';
+      if (cleanVal === "M1" || cleanVal === "1") return '<span class="m-highlight">M1</span>';
       return cleanVal;
     }
 
@@ -340,6 +324,20 @@
         return;
       }
 
+      // 🛠️ 修正: アークナイツ本家基準のソート（昇進降順 ➔ Lv降順 ➔ 五十音順 ※漢字は後ろ）
+      list.sort((a, b) => {
+        const pA = a["昇進"] === "-" ? -1 : (parseInt(a["昇進"], 10) || 0);
+        const pB = b["昇進"] === "-" ? -1 : (parseInt(b["昇進"], 10) || 0);
+        if (pB !== pA) return pB - pA; // ①昇進段階の高い順
+
+        const lA = parseInt(a["Lv"], 10) || 0;
+        const lB = parseInt(b["Lv"], 10) || 0;
+        if (lB !== lA) return lB - lA; // ②レベルの高い順
+
+        // ③あいうえお順（JavaScriptのlocaleCompareは標準でカナ・平仮名が先、漢字が後になります）
+        return a["オペレーター名"].localeCompare(b["オペレーター名"], 'ja');
+      });
+
       list.forEach(op => {
         const rarityNum = parseInt(op["レア"], 10) || 0;
         
@@ -359,7 +357,6 @@
         
         const safeOpName = op["オペレーター名"].replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         
-        // ★新レイアウト：新ロジックを通してスキル枠を生成
         const s1HTML = formatSkillValue(op["S1"]);
         const s2HTML = formatSkillValue(op["S2"]);
         const s3HTML = formatSkillValue(op["S3"]);
