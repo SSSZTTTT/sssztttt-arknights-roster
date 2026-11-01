@@ -27,12 +27,32 @@ var Ark = (function () {
     counts.forEach(c=>Object.keys(total).filter(k=>k!=='job').forEach(k=>total[k]+=c[k]));
     return {rows:counts,total:total};
   }
+  // 漢字名は後方へ。提示されたゲーム内の7名の順序に一致するピンイン順を使用。
+  // ゲーム内部の全ソート仕様を確認したものではない。読み仮名や個別名の決め打ちはしない。
+  var kanaOrder,hanOrder;
+  function compareNames(a,b){
+    var an=text(a),bn=text(b),ah=/^\p{Script=Han}/u.test(an),bh=/^\p{Script=Han}/u.test(bn);
+    if(ah!==bh)return ah?1:-1;
+    kanaOrder=kanaOrder||new Intl.Collator('ja',{numeric:true});
+    hanOrder=hanOrder||new Intl.Collator('zh-u-co-pinyin',{numeric:true});
+    return (ah?hanOrder:kanaOrder).compare(an,bn)||(an<bn?-1:an>bn?1:0);
+  }
+  function levelOrder(a,b){
+    var rank=v=>v==null||v===''?-1:Number(v);
+    var jobRank=j=>jobs.includes(j)?jobs.indexOf(j):jobs.length;
+    return rank(b.elite)-rank(a.elite)||rank(b.level)-rank(a.level)||jobRank(a.job)-jobRank(b.job)||compareNames(a.name,b.name);
+  }
   function search(operators,filters){
     var q=text(filters.query||'').toLowerCase().replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-96));
     return operators.filter(o=>{
       var n=text(o.name).toLowerCase().replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-96));
       return (!q||n.includes(q))&&(!filters.job||o.job===filters.job)&&(!filters.rarity||o.rarity===Number(filters.rarity))&&(!filters.state||filters.state==='owned'&&o.owned||filters.state==='unowned'&&!o.owned||filters.state==='unfinished'&&o.owned&&(!maxed(o)||(o.rarity>=4&&!mastered(o))));
-    }).sort((a,b)=>filters.sort==='name'?a.name.localeCompare(b.name,'ja'):filters.sort==='rarity'?b.rarity-a.rarity||b.date.localeCompare(a.date)||a.name.localeCompare(b.name,'ja'):b.date.localeCompare(a.date)||b.rarity-a.rarity||a.name.localeCompare(b.name,'ja'));
+    }).sort((a,b)=>{
+      if(filters.sort==='name')return compareNames(a.name,b.name);
+      if(filters.sort==='rarity')return b.rarity-a.rarity||String(b.date||'').localeCompare(String(a.date||''))||compareNames(a.name,b.name);
+      if(filters.sort==='recent')return String(b.date||'').localeCompare(String(a.date||''))||b.rarity-a.rarity||compareNames(a.name,b.name);
+      return levelOrder(a,b);
+    });
   }
   function validate(values,rarity){
     if(!values||typeof values!=='object'||Array.isArray(values)||Object.keys(values).length!==fields.length||fields.some(k=>!Object.prototype.hasOwnProperty.call(values,k)))throw Error('入力項目が一致しません。再読み込みしてください。');

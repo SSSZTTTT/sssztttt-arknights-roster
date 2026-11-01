@@ -105,3 +105,11 @@ node scripts/serve.cjs
 自動テストは集計ルール、入力検証、メールアドレスを取得できない環境での入力画面・読み書き、HTML読み込み失敗の表示、競合保存の拒否、変更列だけの保存、通知の成功・失敗、重複受付・クールダウン、JSONP処理をカバーします。GAS・Discord呼出しはモックで、実サービスへ送信しません。Googleによるアクセス制限、GASのリダイレクト通信、実際の通知はデプロイ後に別途確認します。
 
 参考：[GAS Web Apps](https://developers.google.com/apps-script/guides/web)、[Content Service](https://developers.google.com/apps-script/guides/content)、[Session](https://developers.google.com/apps-script/reference/base/session)、[Discord Webhook](https://docs.discord.com/developers/resources/webhook)。
+
+## 一覧の並び順
+
+公開・入力とも標準は「レベル順」です。昇進段階（2→1→0、未入力は最後）、その段階内のレベル降順、先鋒→前衛→重装→狙撃→術師→医療→補助→特殊、名前の順で比較します。同じ昇進・レベルなら、レアリティや実装日で職業順を上書きしません。
+
+名前は漢字で始まるものを後ろにまとめ、それ以外は日本語の照合順、漢字名同士はピンイン順です。提示された「百錬ガヴィル→赤刃明霄チェン→豊川祥子→怒潮ズィマー→聖約イグゼキュター→司霆レイズ→耀騎士ニアール」との一致をテストしています。ゲーム内部の全仕様との一致を確認したものではありません。実装日順・レアリティ順・名前順も選択できます。
+
+今回の入力画面のレイアウト・ソート更新は、生成された `gas/admin/Index.html` の全文置換だけで反映できます。HTML内にフロントエンドのモデルを含むため、既存の入力用 Code.gs・プロパティ・マニフェストは変更不要です。保存後、既存ウェブアプリのデプロイを新バージョンに更新してください。
