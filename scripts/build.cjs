@@ -2,7 +2,9 @@ const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
 function read(p){return fs.readFileSync(path.join(root,p),'utf8');}
 function write(p,s){fs.mkdirSync(path.dirname(path.join(root,p)),{recursive:true});fs.writeFileSync(path.join(root,p),s);}
-write('index.html',read('src/index.html'));
+// 内容が変わった資産だけURLを変え、以前のブラウザキャッシュが残るのを防ぐ。
+const assetVersion=name=>require('node:crypto').createHash('sha256').update(read('src/'+name)).digest('hex').slice(0,12);
+write('index.html',read('src/index.html').replace(/assets\/([a-z]+\.(?:css|js))/g,(_,name)=>'assets/'+name+'?v='+assetVersion(name)));
 for(const name of ['config.js','model.js','transport.js','app.js','style.css'])write('assets/'+name,read('src/'+name));
 for(const project of ['public','admin']){
   write('gas/'+project+'/Core.gs',read('backend/Core.gs'));
