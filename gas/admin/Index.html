@@ -150,6 +150,27 @@
 @keyframes initial-connect{to{transform:scaleX(1)}}
 @keyframes initial-breathe{from{opacity:1}to{opacity:.55}}
 @media(prefers-reduced-motion:reduce){.initial{transition:none}.initial-track,.initial-line{animation:none!important}.initial-line{transform:none}}
+
+/* 一覧画面は上部の操作を残し、カード領域だけをスクロールする。 */
+body:has(#roster){overflow:hidden}
+.shell:has(#roster){height:100dvh;min-height:0;overflow:hidden}
+.shell:has(#roster) .main{display:flex;flex-direction:column;min-height:0;height:100%;padding-top:18px;padding-bottom:12px}
+.main:has(#roster) .topline{flex-shrink:0;margin-bottom:8px}
+.main:has(#roster) .top-actions{top:18px}
+.main:has(#roster) #screen{display:flex;flex-direction:column;min-height:0;flex:1}
+.main:has(#roster) .preview-banner,.roster-controls{flex-shrink:0}
+.roster-controls{background:var(--bg)}
+.roster-scroll{min-height:0;flex:1;overflow:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;scroll-padding-top:44px}
+.roster-scroll .table-labels{position:sticky;top:0;z-index:1;background:var(--bg)}
+.roster-scroll:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+@media(max-width:760px){
+ .shell:has(#roster){display:flex;flex-direction:column}
+ .shell:has(#roster) .sidebar{flex-shrink:0;padding-top:max(8px,env(safe-area-inset-top))}
+ .shell:has(#roster) .main{flex:1;height:auto;padding-top:8px;padding-bottom:calc(68px + env(safe-area-inset-bottom))}
+ .main:has(#roster) .topline{height:0;margin:0}
+ .main:has(#roster) .top-actions{top:max(8px,env(safe-area-inset-top))}
+ .roster-scroll{scroll-padding-top:0}
+}
 </style></head><body><a class="skip" href="#main">一覧へ移動</a><div id="app"><main id="main" class="initial" aria-busy="true"><div class="initial-track" aria-hidden="true"><span class="initial-line"></span><span class="initial-line"></span></div><p class="initial-label" role="status">育成記録を読み込んでいます…</p></main></div><script>window.ARK_ADMIN=true;window.ARK_CONFIG={};</script><script>/* 公開画面・入力画面・GASで共有する育成データのルール。 */
 var Ark = (function () {
   'use strict';
@@ -293,7 +314,7 @@ if(typeof module!=='undefined')module.exports=Ark;
     var titles={roster:admin?'育成を記録':'オペレーター一覧',summary:'統計',history:'リクエスト履歴'};
     var html=(T.demo?'<div class="preview-banner"><span>プレビュー · 保存やDiscord通知は実行されません</span><a href="?demo=1'+(admin?'':'&screen=admin')+'">'+(admin?'公開画面を見る':'入力画面を見る')+' ↗</a></div>':'')+(view==='roster'?'<h1 class="sr-only">'+titles[view]+'</h1>':'<div class="page-heading"><div><h1>'+titles[view]+'</h1></div></div>');
     if(view==='roster'){
-      html+='<div id="cooldown" class="cooldown" role="status"></div><div class="toolbar" id="search-panel"'+(searchOpen?'':' hidden')+'><label class="search">'+icon('search')+'<input type="search" id="search" aria-label="オペレーター名で検索" placeholder="オペレーター名で検索" value="'+e(filters.query)+'" autocomplete="off"></label></div><div class="class-tabs" role="group" aria-label="職業・レアリティで絞り込み">'+['',...Ark.jobs].map(job=>'<button class="class-tab '+(filters.job===job?'active':'')+'" data-job="'+job+'" aria-pressed="'+(filters.job===job)+'">'+(job||'すべて')+'</button>').join('')+'<label class="rarity-filter"><span aria-hidden="true"><span id="rarity-value">★'+e(filters.rarity)+'</span> ▾</span><select class="rarity-select" id="rarity" aria-label="レアリティ"><option value="">すべてのレアリティ</option>'+[6,5,4,3,2,1].map(r=>'<option value="'+r+'" '+(String(r)===filters.rarity?'selected':'')+'>★'+r+'</option>').join('')+'</select></label></div><div class="list-meta"><span id="result-count"></span><label>並び順 <select class="sort-select" id="sort" aria-label="並び順">'+[['level','レベル順'],['recent','実装日が新しい順'],['rarity','レアリティ順'],['name','名前順']].map(([v,l])=>'<option value="'+v+'" '+(v===filters.sort?'selected':'')+'>'+l+'</option>').join('')+'</select></label></div><div class="table-labels"><span>オペレーター</span><span>レベル</span><span>潜在</span><span>スキル特化</span><span class="module-label">モジュール</span><span></span></div><div class="roster" id="roster"></div><div class="list-footer"><span>最終取得 '+stamp(data.updatedAt)+'</span><span>'+(admin?'変更は保存ボタンで反映':'サポートアイコンからリクエスト')+'</span></div>';
+      html+='<div class="roster-controls"><div id="cooldown" class="cooldown" role="status"></div><div class="toolbar" id="search-panel"'+(searchOpen?'':' hidden')+'><label class="search">'+icon('search')+'<input type="search" id="search" aria-label="オペレーター名で検索" placeholder="オペレーター名で検索" value="'+e(filters.query)+'" autocomplete="off"></label></div><div class="class-tabs" role="group" aria-label="職業・レアリティで絞り込み">'+['',...Ark.jobs].map(job=>'<button class="class-tab '+(filters.job===job?'active':'')+'" data-job="'+job+'" aria-pressed="'+(filters.job===job)+'">'+(job||'すべて')+'</button>').join('')+'<label class="rarity-filter"><span aria-hidden="true"><span id="rarity-value">★'+e(filters.rarity)+'</span> ▾</span><select class="rarity-select" id="rarity" aria-label="レアリティ"><option value="">すべてのレアリティ</option>'+[6,5,4,3,2,1].map(r=>'<option value="'+r+'" '+(String(r)===filters.rarity?'selected':'')+'>★'+r+'</option>').join('')+'</select></label></div><div class="list-meta"><span id="result-count"></span><label>並び順 <select class="sort-select" id="sort" aria-label="並び順">'+[['level','レベル順'],['recent','実装日が新しい順'],['rarity','レアリティ順'],['name','名前順']].map(([v,l])=>'<option value="'+v+'" '+(v===filters.sort?'selected':'')+'>'+l+'</option>').join('')+'</select></label></div></div><div class="roster-scroll" tabindex="0" role="region" aria-label="オペレーター一覧のスクロール領域"><div class="table-labels"><span>オペレーター</span><span>レベル</span><span>潜在</span><span>スキル特化</span><span class="module-label">モジュール</span><span></span></div><div class="roster" id="roster"></div><div class="list-footer"><span>最終取得 '+stamp(data.updatedAt)+'</span><span>'+(admin?'変更は保存ボタンで反映':'サポートアイコンからリクエスト')+'</span></div></div>';
     }else if(view==='summary'){
       html+=summaryOverview()+'<h2 class="summary-section-title">職業別の育成状況</h2>'+ '<div class="summary-switch" role="group" aria-label="集計のレアリティ">'+[['','総合'],['6','★6'],['5','★5'],['4','★4']].map(([v,l])=>'<button data-summary="'+v+'" class="'+(summaryRarity===v?'active':'')+'" aria-pressed="'+(summaryRarity===v)+'">'+l+'</button>').join('')+'</div><div id="summary-content"></div>';
     }else{
@@ -319,6 +340,7 @@ if(typeof module!=='undefined')module.exports=Ark;
     var list=Ark.search(data.operators,filters);
     document.getElementById('result-count').innerHTML='<strong>'+list.length+'</strong> / '+data.operators.length+' OPERATORS';
     document.getElementById('roster').innerHTML=list.length?list.map(operatorRow).join(''):'<div class="empty">'+icon('search')+'<strong>該当するオペレーターがいません</strong>名前や絞り込み条件を変えてみてください。<br><button class="text-button" id="reset-filters">絞り込みをリセット</button></div>';
+    document.querySelector('.roster-scroll').scrollTop=0;
     document.querySelectorAll('[data-edit-name],[data-request-name]').forEach(b=>b.onclick=()=>openOperator(data.operators.find(o=>o.name===(b.dataset.editName||b.dataset.requestName))));
     var reset=document.getElementById('reset-filters');if(reset)reset.onclick=()=>{filters={query:'',rarity:'',job:'',sort:'level'};renderScreen();};
   }

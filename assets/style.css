@@ -150,3 +150,24 @@
 @keyframes initial-connect{to{transform:scaleX(1)}}
 @keyframes initial-breathe{from{opacity:1}to{opacity:.55}}
 @media(prefers-reduced-motion:reduce){.initial{transition:none}.initial-track,.initial-line{animation:none!important}.initial-line{transform:none}}
+
+/* 一覧画面は上部の操作を残し、カード領域だけをスクロールする。 */
+body:has(#roster){overflow:hidden}
+.shell:has(#roster){height:100dvh;min-height:0;overflow:hidden}
+.shell:has(#roster) .main{display:flex;flex-direction:column;min-height:0;height:100%;padding-top:18px;padding-bottom:12px}
+.main:has(#roster) .topline{flex-shrink:0;margin-bottom:8px}
+.main:has(#roster) .top-actions{top:18px}
+.main:has(#roster) #screen{display:flex;flex-direction:column;min-height:0;flex:1}
+.main:has(#roster) .preview-banner,.roster-controls{flex-shrink:0}
+.roster-controls{background:var(--bg)}
+.roster-scroll{min-height:0;flex:1;overflow:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;scroll-padding-top:44px}
+.roster-scroll .table-labels{position:sticky;top:0;z-index:1;background:var(--bg)}
+.roster-scroll:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+@media(max-width:760px){
+ .shell:has(#roster){display:flex;flex-direction:column}
+ .shell:has(#roster) .sidebar{flex-shrink:0;padding-top:max(8px,env(safe-area-inset-top))}
+ .shell:has(#roster) .main{flex:1;height:auto;padding-top:8px;padding-bottom:calc(68px + env(safe-area-inset-bottom))}
+ .main:has(#roster) .topline{height:0;margin:0}
+ .main:has(#roster) .top-actions{top:max(8px,env(safe-area-inset-top))}
+ .roster-scroll{scroll-padding-top:0}
+}
