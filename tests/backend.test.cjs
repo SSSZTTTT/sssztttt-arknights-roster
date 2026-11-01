@@ -10,6 +10,8 @@ function fixture(kind='PublicApi'){
   const properties={getProperty:k=>props.get(k)||null,setProperty:(k,v)=>props.set(k,v),deleteProperty:k=>props.delete(k),getProperties:()=>Object.fromEntries(props)};
   const ctx=vm.createContext({console,Date,PropertiesService:{getScriptProperties:()=>properties},SpreadsheetApp:{openById:()=>ss,flush(){}},LockService:{getScriptLock:()=>({tryLock:()=>!ctx.locked,releaseLock(){ctx.released=true;}})},Session:{getActiveUser:()=>({getEmail:()=>ctx.email})},Utilities:{formatDate:()=> '2026-11-01',DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},computeDigest:(_,s)=>Array.from(crypto.createHash('sha256').update(s).digest())},UrlFetchApp:{fetch(url,opts){notifications.push({url,opts});if(ctx.networkError)throw Error('mock timeout');return {getResponseCode:()=>ctx.httpStatus};}},ContentService:{MimeType:{TEXT:'text',JSON:'json',JAVASCRIPT:'js'},createTextOutput(text){return {text,setMimeType(type){this.type=type;return this;}}}}});
   ctx.httpStatus=200;ctx.email='owner@example.test';props.set('OWNER_EMAIL',ctx.email);
+  function html(text){return {text,setTitle(title){this.title=title;return this;},addMetaTag(name,content){this.meta={name,content};return this;}};}
+  ctx.HtmlService={createHtmlOutput:html,createHtmlOutputFromFile(name){if(ctx.htmlError)throw Error('missing '+name);return html('<html>入力画面</html>');}};
   // Placeholder value, no live network: UrlFetchApp is entirely mocked.
   props.set('DISCORD_WEBHOOK_URL','https://discord.com/api/webhooks/0/FAKE_TEST_ONLY');
   for(const file of ['src/model.js','backend/Core.gs','backend/'+kind+'.gs'])vm.runInContext(fs.readFileSync(file,'utf8'),ctx);
@@ -56,10 +58,22 @@ test('receipt cleanup keeps bounded recent receipts and removes expired entries'
   f.props.set('ARK_RECEIPT_old',JSON.stringify({createdAt:0}));f.ctx.supportCleanReceipts_({getProperties:()=>Object.fromEntries(f.props),deleteProperty:k=>f.props.delete(k)},now);
   assert.equal([...f.props.keys()].filter(k=>k.startsWith('ARK_RECEIPT_')).length,149);
 });
-test('private endpoints deny blank identity, unconfigured owner and other accounts',()=>{
+test('owner-only deployment does not depend on availability of email identity',()=>{
   const f=fixture('Admin');
-  for(const email of ['', 'someone@example.test']){f.ctx.email=email;assert.throws(()=>f.ctx.getTrainingData());assert.throws(()=>f.ctx.saveTraining({}));}
-  f.ctx.email='owner@example.test';f.props.delete('OWNER_EMAIL');assert.throws(()=>f.ctx.getTrainingData());assert.equal(f.writes.length,0);
+  delete f.ctx.Session;f.props.delete('OWNER_EMAIL');
+  assert.match(f.ctx.doGet().text,/入力画面/);
+  const op=f.ctx.getTrainingData().operators[0];
+  assert.equal(f.ctx.saveTraining({name:op.name,version:op.version,values:{...op.training,potential:19}}).potential,19);
+});
+test('HTML failures have a specific message instead of an authentication error',()=>{
+  const f=fixture('Admin');f.ctx.htmlError=true;f.ctx.console={error(){}};
+  const response=f.ctx.doGet();assert.match(response.text,/ADMIN_HTML_LOAD/);assert.doesNotMatch(response.text,/OWNER_EMAIL|本人専用の入力ツールです/);
+  assert.equal(response.meta.name,'viewport');assert.equal(f.writes.length,0);
+});
+test('admin deployment manifest uses Google owner-only access without email scope',()=>{
+  const manifest=JSON.parse(fs.readFileSync('gas/admin/appsscript.json','utf8'));
+  assert.deepEqual(manifest.webapp,{access:'MYSELF',executeAs:'USER_DEPLOYING'});
+  assert.equal(manifest.oauthScopes.includes('https://www.googleapis.com/auth/userinfo.email'),false);
 });
 test('private save updates only changed editable cells, retains excess potential and metadata',()=>{
   const f=fixture('Admin'),op=f.ctx.webOperator_(f.row,headers,true),before=f.row.slice();
