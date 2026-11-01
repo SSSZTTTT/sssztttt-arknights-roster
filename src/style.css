@@ -160,7 +160,8 @@ body:has(#roster){overflow:hidden}
 .main:has(#roster) #screen{display:flex;flex-direction:column;min-height:0;flex:1}
 .main:has(#roster) .preview-banner,.roster-controls{flex-shrink:0}
 .roster-controls{background:var(--bg)}
-.roster-scroll{min-height:0;flex:1;overflow:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;scroll-padding-top:44px}
+.roster-scroll{min-height:0;flex:1;overflow:auto;overscroll-behavior-y:contain;scrollbar-width:none;scrollbar-gutter:auto;scroll-padding-top:44px}
+.roster-scroll::-webkit-scrollbar{display:none;width:0;height:0}
 .roster-scroll .table-labels{position:sticky;top:0;z-index:1;background:var(--bg)}
 .roster-scroll:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
 @media(max-width:760px){
@@ -171,3 +172,8 @@ body:has(#roster){overflow:hidden}
  .main:has(#roster) .top-actions{top:max(8px,env(safe-area-inset-top))}
  .roster-scroll{scroll-padding-top:0}
 }
+
+/* 記録を重ねるイメージの、軽い線で描いたシンボル。 */
+.brand-mark{background:transparent;color:var(--blue);clip-path:none}
+.brand-mark svg{width:34px;height:34px;stroke-width:1.5}
+@media(max-width:760px){.brand-mark svg{width:29px;height:29px}}
