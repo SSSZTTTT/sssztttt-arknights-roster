@@ -75,7 +75,7 @@
 }
 
 /* ブランドの2行を同じ大きさにし、統計の項目名・割合も読みやすくする。 */
-.brand-name,.brand-sub{font-size:16px;line-height:1.25;letter-spacing:1.2px}
+.brand-name,.brand-sub{font-size:16px;line-height:1.25;letter-spacing:1.2px;color:var(--text)}
 .brand-sub{font-weight:600;margin-top:3px}
 .summary-overview .metric-label{font-size:16px;line-height:1.6}
 .summary-overview .metric-label svg{width:18px;height:18px;flex-shrink:0}
@@ -126,3 +126,10 @@
  .summary-overview .metric-label{min-height:42px}
  .summary-overview .metric:first-child .metric-comparison dd span{display:block}
 }
+
+/* スキル・モジュールの英数字はLv表示と同じ書体・太さ・数字幅に統一。 */
+.op-level,.skill-pill,.skill-pill b,.module-pills,.module-pill i,.module-heading{
+ font-family:'Manrope','Noto Sans JP',sans-serif;font-weight:600;font-style:normal;font-variant-numeric:tabular-nums;
+}
+@media(min-width:761px) and (max-width:1100px){.oprow .skill-pill{padding-left:3px;padding-right:3px}}
+@media(max-width:360px){.oprow .op-training{column-gap:6px}.oprow .op-training .module-pills.row-modules{gap:4px}}
