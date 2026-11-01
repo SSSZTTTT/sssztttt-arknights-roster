@@ -73,3 +73,56 @@
  .oprow .skill-pill{height:35px;padding:0 3px}
  .oprow .module-heading{font-size:14px;line-height:1.2}
 }
+
+/* ブランドの2行を同じ大きさにし、統計の項目名・割合も読みやすくする。 */
+.brand-name,.brand-sub{font-size:16px;line-height:1.25;letter-spacing:1.2px}
+.brand-sub{font-weight:600;margin-top:3px}
+.summary-overview .metric-label{font-size:16px;line-height:1.6}
+.summary-overview .metric-label svg{width:18px;height:18px;flex-shrink:0}
+.metric-comparison dt{font-size:14px}
+.metric-comparison strong{font-size:26px}
+.metric-comparison dd span{font-size:13px}
+.metric-comparison small{font-size:14px;line-height:1.5}
+.metric-comparison>div{padding:8px 0}
+.summary-section-title{font-size:20px}
+.summary-switch button{font-size:15px}
+.summary-table{font-size:17px}
+.summary-table th{font-size:14px}
+.summary-table small{font-size:14px;line-height:1.5}
+.summary-table td,.summary-table th{padding:13px 15px}
+.section-note{font-size:14px;line-height:1.8}
+@media(min-width:761px){
+ .brand{gap:9px}.brand-mark{flex-shrink:0}.nav-item{font-size:14px;gap:8px;padding-left:8px;padding-right:8px;white-space:nowrap}.nav-item svg{flex-shrink:0}
+ .nav-label,.sidebar-foot{font-size:12px}.sidebar-foot{overflow-wrap:anywhere}
+ .class-tab{font-size:15px;padding-left:12px;padding-right:12px}.class-tabs{gap:2px}
+ .list-meta,.sort-select,.table-labels,.list-footer{font-size:13px}.list-meta strong{font-size:17px}.sort-select{max-width:170px}
+ .op-name{font-size:16px;line-height:1.4}.op-meta{font-size:12px}
+ .op-level{font-size:18px}.op-level small{font-size:14px}.op-potential strong{font-size:18px}.module-pills{font-size:18px}
+ .row-action{font-size:13px}.search input{font-size:16px}.rarity-filter{font-size:15px}
+ .history-row strong{font-size:16px}.history-row p,.history-row time{font-size:14px}
+ .dialog-sub,.detail-section>p,.detail-stats small,.field label,.field-title{font-size:14px}
+ .dialog-notice,.dialog-message,.primary,.secondary{font-size:15px}.detail-stats strong{font-size:21px}
+ .edit-section-heading h3{font-size:16px}.text-button,.editor-dialog .owned-switch,.field select{font-size:14px}
+ .tiny-tag,.cooldown.active{font-size:13px}
+}
+@media(min-width:761px) and (max-width:1100px){
+ .brand-name,.brand-sub{font-size:14px}
+ .sidebar{padding-left:12px;padding-right:12px}.nav-item{font-size:13px}
+ .summary-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .class-tabs{flex-wrap:wrap;overflow:visible}.class-tab{padding-left:10px;padding-right:10px}
+}
+@media(max-width:760px){
+ .brand-name,.brand-sub{font-size:13px;line-height:1.2}
+ .summary-overview .metric-label{font-size:14px;line-height:1.5;margin-bottom:10px}
+ .summary-overview .metric-label svg{display:none}
+ .metric-comparison dt{font-size:13px}.metric-comparison strong{font-size:19px}
+ .metric-comparison dd span{font-size:12px}.metric-comparison small{font-size:13px}
+ .summary-section-title{font-size:18px}.summary-switch button{font-size:14px}
+ .summary-table{font-size:15px}.summary-table th,.summary-table small{font-size:13px}
+ .summary-table td,.summary-table th{padding:12px 14px}
+ .section-note{font-size:13px;line-height:1.85}
+}
+@media(max-width:380px){
+ .summary-overview .metric-label{min-height:42px}
+ .summary-overview .metric:first-child .metric-comparison dd span{display:block}
+}
