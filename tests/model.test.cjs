@@ -38,3 +38,23 @@ test('name identity preserves superscript; search normalizes kana and width',()=
   assert.equal(Ark.search([op()],{state:'unfinished'}).length,0);
   assert.equal(Ark.search([op({skills:['M3','7','-']})],{state:'unfinished'}).length,1);
 });
+
+test('level order prioritizes promotion, level, job and name without a rarity tie-break',()=>{
+  const list=[op({name:'ア',elite:1,level:80,job:'先鋒'}),op({name:'ウ',elite:2,level:1,job:'先鋒'}),op({name:'イ',elite:2,level:90,job:'前衛'}),op({name:'エ',elite:2,level:90,job:'先鋒',rarity:4}),op({name:'オ',elite:2,level:90,job:'先鋒',rarity:6}),op({name:'未入力',elite:null,level:null}),op({name:'未昇進',elite:0,level:30}),op({name:'レベル未入力',elite:2,level:null})];
+  assert.deepEqual(Ark.search(list,{sort:'level'}).map(o=>o.name),['エ','オ','イ','ウ','レベル未入力','ア','未昇進','未入力']);
+  assert.deepEqual(Ark.search(list,{}),Ark.search(list,{sort:'level'}));
+  assert.equal(list[0].name,'ア');
+  assert.deepEqual(Ark.search([...Ark.jobs].reverse().map(job=>op({name:job,job})),{sort:'level'}).map(o=>o.job),Ark.jobs);
+});
+
+test('tied levels sort kana before Han and reproduce the supplied seven-name game order',()=>{
+  const han=['百錬ガヴィル','赤刃明霄チェン','豊川祥子','怒潮ズィマー','聖約イグゼキュター','司霆レイズ','耀騎士ニアール'];
+  const list=[...han].reverse().concat(['ウタゲ','アーミヤ','イネス']).map(name=>op({name,job:'前衛'}));
+  for(const sort of ['level','name'])assert.deepEqual(Ark.search(list,{sort}).map(o=>o.name),['アーミヤ','イネス','ウタゲ',...han]);
+});
+
+test('explicit recent and rarity sorts remain available alongside level sorting',()=>{
+  const list=[op({name:'新しい',rarity:4,date:'2026-01-01'}),op({name:'高レア',rarity:6,date:'2020-01-01'})];
+  assert.equal(Ark.search(list,{sort:'recent'})[0].name,'新しい');
+  assert.equal(Ark.search(list,{sort:'rarity'})[0].name,'高レア');
+});
