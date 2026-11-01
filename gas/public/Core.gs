@@ -1,6 +1,8 @@
 /** 公開用・入力用で共通。末尾 _ の関数はgoogle.script.runから呼べません。 */
 function webSpreadsheet_() {
-  return SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID') || 'REDACTED_SPREADSHEET_ID');
+  var id=PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+  if(!id||!id.trim())throw Error('SPREADSHEET_ID をスクリプトプロパティに設定してください。');
+  return SpreadsheetApp.openById(id.trim());
 }
 function webHeaders_(values) {
   var headers=values[0].map(Ark.name),required=['実装日','レア','職業','オペレーター名'].concat(Object.values(Ark.columns));

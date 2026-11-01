@@ -3,21 +3,45 @@ const assert=require('node:assert/strict');
 const vm=require('node:vm'),fs=require('node:fs'),crypto=require('node:crypto');
 const headers=['実装日','レア','職業','オペレーター名','昇進','Lv','潜在','S1','S2','S3','X','Y','Δ','α','所持状態'];
 function fixture(kind='PublicApi'){
-  const props=new Map(),writes=[],notifications=[],history=[];
+  const props=new Map([['SPREADSHEET_ID','TEST_ONLY_SHEET']]),writes=[],notifications=[],history=[],opened=[];
   const row=['2020-01-16',6,'特殊','ア',2,90,18,'M3','M3','M3',3,'-','-','-',true];
   const sheet={getName:()=> '2020年',getLastRow:()=>2,getLastColumn:()=>15,getRange(r,c,h,w){return {getValues:()=>r===1?[headers.slice(),row.slice()]:[row.slice(c-1,c-1+w)],getFormulas:()=>[headers.map((_,i)=>sheet.formula===i?'=1':'')],setValues(v){writes.push({c,values:v[0]});row.splice(c-1,w,...v[0]);}}}};
   const ss={getSheets:()=>[sheet],getSheetByName:()=>({getLastRow:()=>1,appendRow:r=>history.push(r)})};
   const properties={getProperty:k=>props.get(k)||null,setProperty:(k,v)=>props.set(k,v),deleteProperty:k=>props.delete(k),getProperties:()=>Object.fromEntries(props)};
-  const ctx=vm.createContext({console,Date,PropertiesService:{getScriptProperties:()=>properties},SpreadsheetApp:{openById:()=>ss,flush(){}},LockService:{getScriptLock:()=>({tryLock:()=>!ctx.locked,releaseLock(){ctx.released=true;}})},Session:{getActiveUser:()=>({getEmail:()=>ctx.email})},Utilities:{formatDate:()=> '2026-11-01',DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},computeDigest:(_,s)=>Array.from(crypto.createHash('sha256').update(s).digest())},UrlFetchApp:{fetch(url,opts){notifications.push({url,opts});if(ctx.networkError)throw Error('mock timeout');return {getResponseCode:()=>ctx.httpStatus};}},ContentService:{MimeType:{TEXT:'text',JSON:'json',JAVASCRIPT:'js'},createTextOutput(text){return {text,setMimeType(type){this.type=type;return this;}}}}});
+  const ctx=vm.createContext({console,Date,PropertiesService:{getScriptProperties:()=>properties},SpreadsheetApp:{openById(id){opened.push(id);return ss;},flush(){}},LockService:{getScriptLock:()=>({tryLock:()=>!ctx.locked,releaseLock(){ctx.released=true;}})},Session:{getActiveUser:()=>({getEmail:()=>ctx.email})},Utilities:{formatDate:()=> '2026-11-01',DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},computeDigest:(_,s)=>Array.from(crypto.createHash('sha256').update(s).digest())},UrlFetchApp:{fetch(url,opts){notifications.push({url,opts});if(ctx.networkError)throw Error('mock timeout');return {getResponseCode:()=>ctx.httpStatus};}},ContentService:{MimeType:{TEXT:'text',JSON:'json',JAVASCRIPT:'js'},createTextOutput(text){return {text,setMimeType(type){this.type=type;return this;}}}}});
   ctx.httpStatus=200;ctx.email='owner@example.test';props.set('OWNER_EMAIL',ctx.email);
   function html(text){return {text,setTitle(title){this.title=title;return this;},addMetaTag(name,content){this.meta={name,content};return this;}};}
   ctx.HtmlService={createHtmlOutput:html,createHtmlOutputFromFile(name){if(ctx.htmlError)throw Error('missing '+name);return html('<html>入力画面</html>');}};
   // Placeholder value, no live network: UrlFetchApp is entirely mocked.
   props.set('DISCORD_WEBHOOK_URL','https://discord.com/api/webhooks/0/FAKE_TEST_ONLY');
   for(const file of ['src/model.js','backend/Core.gs','backend/'+kind+'.gs'])vm.runInContext(fs.readFileSync(file,'utf8'),ctx);
-  return {ctx,props,row,sheet,ss,writes,notifications,history};
+  return {ctx,props,row,sheet,ss,writes,notifications,history,opened};
 }
 const input=(id='a',client='b',name='ア')=>({requestId:id.repeat(36),clientId:client.repeat(36),name});
+
+test('spreadsheet access uses only the script property and fails closed when missing',()=>{
+  const f=fixture();
+  assert.equal(f.ctx.webSpreadsheet_(),f.ss);
+  assert.deepEqual(f.opened,['TEST_ONLY_SHEET']);
+  for(const value of [null,'','   ']){
+    if(value===null)f.props.delete('SPREADSHEET_ID');else f.props.set('SPREADSHEET_ID',value);
+    assert.throws(()=>f.ctx.webSpreadsheet_(),/SPREADSHEET_ID/);
+    const response=JSON.parse(f.ctx.doGet({parameter:{action:'roster'}}).text);
+    assert.equal(response.ok,false);assert.doesNotMatch(response.error,/SPREADSHEET_ID|TEST_ONLY/);
+  }
+  assert.equal(f.opened.length,1);
+});
+
+test('privacy checker blocks private identifiers without rejecting examples or the mocked webhook',()=>{
+  const {privacyIssues}=require('../scripts/check.cjs');
+  const id='1'+'x'.repeat(40),email='private-user'+'@'+'gmail.com';
+  for(const source of ["SpreadsheetApp.openById('"+id+"')","const SPREADSHEET_ID = '"+id+"';","getProperty('SPREADSHEET_ID') || '"+id+"'",'https://docs.google.com/spreadsheets/d/'+id+'/edit'])assert.deepEqual(privacyIssues(source,'backend/Core.gs'),['Hardcoded spreadsheet ID']);
+  assert.deepEqual(privacyIssues(email,'README.md'),['Email address']);
+  assert.deepEqual(privacyIssues('owner@example.test person@example.com 123+handle@users.noreply.github.com','README.md'),[]);
+  const webhook='https://discord.com/api/webhooks/0/FAKE_TEST_ONLY';
+  assert.deepEqual(privacyIssues(webhook,'tests/backend.test.cjs'),[]);
+  assert.deepEqual(privacyIssues(webhook,'assets/config.js'),['Discord webhook']);
+});
 
 test('public and private responses retain absent potential and editing another field preserves it',()=>{
   const f=fixture('Admin');f.row[6]='-';
