@@ -6,7 +6,7 @@
 | --- | --- |
 | GitHub Pages | 全レアリティの一覧、検索・絞り込み、育成集計、サポート依頼 |
 | 現在のシートに紐づくGAS | 既存のWiki取得処理、公開データAPI、依頼受付、Discord通知、履歴記録 |
-| 独立したGAS | 本人専用の育成入力画面、Googleアカウント確認、シート更新 |
+| 独立したGAS | 本人専用の育成入力画面、Googleのデプロイ権限によるアクセス制限、シート更新 |
 | Google Sheets | 年別オペレーターデータ、集計、履歴 |
 
 Cloud Runは使用しません。GASが自動的に利用する標準のGoogle Cloudプロジェクトは必要ですが、Cloud Consoleで別途構築・設定する構成ではありません。
@@ -42,10 +42,12 @@ Webhook URLはコードやGitHub、公開サイトに入れません。以前共
 1. [Apps Script](https://script.google.com/home) で新しいプロジェクトを作成します。
 2. `gas/admin` の `Code.gs`・`Core.gs`・`Model.gs` を追加し、HTMLファイル `Index` を作って `Index.html` の内容を貼り付けます。
 3. プロジェクト設定からマニフェストの表示を有効にして、`appsscript.json` を同名ファイルに反映します。
-4. スクリプト プロパティに `SPREADSHEET_ID` と `OWNER_EMAIL`（利用するGoogleアカウントのメールアドレス）を設定します。入力用GASにWebhookは不要です。
+4. スクリプト プロパティに `SPREADSHEET_ID` を設定します。入力用GASにWebhookや `OWNER_EMAIL` は不要です。以前登録した `OWNER_EMAIL` は削除して構いません（残っていても参照しません）。
 5. ウェブアプリとしてデプロイし、実行するユーザーを自分、アクセスできるユーザーを **自分のみ** に設定します。このアカウントでスマホから `/exec` URLを開いて使います。
 
-サーバーでも、アクセスしたGoogleアカウントと `OWNER_EMAIL` の一致を毎回確認します。アカウントを確認できない場合は書き込まず停止します。本人用URLを公開サイトへ載せる必要はありません。
+利用者の制限はGoogleの「自分のみ」で行い、コード内でメールアドレスの追加照合はしません。入力用のマニフェストにも `webapp.access: MYSELF` を指定しています。既存のデプロイを更新するときも、アクセス設定が「自分のみ」であることを確認してください。入力用コードを公開用GASへ入れたり、入力用を「全員」で公開したりしないでください。
+
+画面生成が失敗した場合は `ADMIN_HTML_LOAD` と表示し、認証エラーと区別します。HTMLファイル名が `Index` になっているか確認してください。詳細はGASの実行ログに出ます。
 
 Googleの認可画面・デプロイ設定はアカウント本人が完了してください。コード変更後は、デプロイ管理から新バージョンへ更新する必要があります。
 
@@ -100,6 +102,6 @@ node scripts/serve.cjs
 
 修正元は `src` と `backend` です。`assets` と `gas` はビルド生成物なので、修正後は `node scripts/build.cjs` を実行します。
 
-自動テストは集計ルール、入力検証、本人確認、競合保存の拒否、変更列だけの保存、通知の成功・失敗、重複受付・クールダウン、JSONP処理をカバーします。GAS・Discord呼出しはモックで、実サービスへ送信しません。本番の認証、GASのリダイレクト通信、実際の通知はデプロイ後に別途確認します。
+自動テストは集計ルール、入力検証、メールアドレスを取得できない環境での入力画面・読み書き、HTML読み込み失敗の表示、競合保存の拒否、変更列だけの保存、通知の成功・失敗、重複受付・クールダウン、JSONP処理をカバーします。GAS・Discord呼出しはモックで、実サービスへ送信しません。Googleによるアクセス制限、GASのリダイレクト通信、実際の通知はデプロイ後に別途確認します。
 
 参考：[GAS Web Apps](https://developers.google.com/apps-script/guides/web)、[Content Service](https://developers.google.com/apps-script/guides/content)、[Session](https://developers.google.com/apps-script/reference/base/session)、[Discord Webhook](https://docs.discord.com/developers/resources/webhook)。
