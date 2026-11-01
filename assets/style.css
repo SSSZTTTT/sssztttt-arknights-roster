@@ -64,3 +64,12 @@
 .editor-dialog .dialog-top{align-items:flex-start}.editor-dialog .dialog-top h2{font-size:20px;margin:0;min-width:0;overflow-wrap:anywhere;line-height:1.5}.editor-dialog .dialog-top .icon-button{flex-shrink:0}.editor-dialog .dialog-sub{margin-top:3px}
 .editor-dialog .owned-switch{display:inline-flex;justify-content:flex-start;align-items:center;gap:8px;min-height:36px;margin:8px 0 10px;padding:0 4px;background:none;border-radius:4px;font-size:12px;cursor:pointer}.editor-dialog .owned-switch input{width:18px;height:18px;margin:0}
 .editor-dialog .editor-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:340px;margin-top:8px;align-items:end}.editor-dialog .editor-grid .field{min-width:0}.editor-dialog .editor-grid label{margin-bottom:5px;white-space:nowrap}.editor-dialog .editor-grid input,.editor-dialog .editor-grid select{min-width:0;min-height:40px;height:40px;padding:6px 8px;font-size:16px}
+
+/* カードの外寸を保ち、スキル欄の内側の余白を文字に使う。 */
+.oprow .skill-pill{font-size:19px;line-height:1.2;padding:4px 5px;gap:3px;min-height:35px}
+.oprow .skill-pill b{font-size:13px;line-height:1.2}
+@media(max-width:760px){
+ .oprow .op-training{padding-top:4px;gap:10px}
+ .oprow .skill-pill{height:35px;padding:0 3px}
+ .oprow .module-heading{font-size:14px;line-height:1.2}
+}
