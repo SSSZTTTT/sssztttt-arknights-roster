@@ -84,21 +84,23 @@ var Ark = (function () {
   function text(v){return v==null?'':String(v).normalize('NFKC').trim();}
   function name(v){return v==null?'':String(v).normalize('NFC').trim();}
   function number(v){return text(v)===''||text(v)==='-'?null:Number(text(v));}
+  // 「-」は潜在そのものが存在しない。空欄（未入力）とは区別する。
+  function hasPotential(o){return text(o.potential)!=='-';}
   function skill(v){var s=text(v).toUpperCase();return /^[123]$/.test(s)?'M'+s:s==='0'||s==='M0'?'':s;}
   function maxed(o){var c=caps[o.rarity];return !!c&&o.elite===c[0]&&o.level===c[1];}
   function mastered(o){var s=o.skills.filter(v=>v!=='-');return o.rarity>=4&&s.length>0&&s.every(v=>v==='M3');}
   function fromRow(row,headers){
     var get=k=>row[headers.indexOf(k)],r=Number(text(get('レア')).replace(/[★☆]/g,''));
     var elite=number(get('昇進'));if(r<=2&&text(get('昇進'))==='-')elite=0;
-    return {name:name(get('オペレーター名')),rarity:r,job:text(get('職業')),owned:get('所持状態')===true||text(get('所持状態')).toUpperCase()==='TRUE',elite:elite,level:number(get('Lv')),potential:number(get('潜在')),skills:['S1','S2','S3'].map(k=>skill(get(k))),modules:modules.map(k=>text(get(k)))};
+    return {name:name(get('オペレーター名')),rarity:r,job:text(get('職業')),owned:get('所持状態')===true||text(get('所持状態')).toUpperCase()==='TRUE',elite:elite,level:number(get('Lv')),potential:text(get('潜在'))==='-'?'-':number(get('潜在')),skills:['S1','S2','S3'].map(k=>skill(get(k))),modules:modules.map(k=>text(get(k)))};
   }
   function summarize(operators,rarity){
-    var counts=jobs.map(job=>({job:job,count:0,skills:0,m3:0,mastered:0,potential:0,max:0}));
+    var counts=jobs.map(job=>({job:job,count:0,skills:0,m3:0,mastered:0,potential:0,potentialCount:0,max:0}));
     operators.filter(o=>o.owned&&o.rarity>=4&&(!rarity||o.rarity===Number(rarity))).forEach(o=>{
       var c=counts.find(c=>c.job===o.job);if(!c)return;
-      c.count++;c.skills+=o.skills.filter(s=>s!=='-').length;c.m3+=o.skills.filter(s=>s==='M3').length;c.mastered+=Number(mastered(o));c.potential+=Number(o.potential>=6);c.max+=Number(maxed(o));
+      c.count++;c.skills+=o.skills.filter(s=>s!=='-').length;c.m3+=o.skills.filter(s=>s==='M3').length;c.mastered+=Number(mastered(o));c.potential+=Number(o.potential>=6);c.potentialCount+=Number(hasPotential(o));c.max+=Number(maxed(o));
     });
-    var total={job:'全職合計',count:0,skills:0,m3:0,mastered:0,potential:0,max:0};
+    var total={job:'全職合計',count:0,skills:0,m3:0,mastered:0,potential:0,potentialCount:0,max:0};
     counts.forEach(c=>Object.keys(total).filter(k=>k!=='job').forEach(k=>total[k]+=c[k]));
     return {rows:counts,total:total};
   }
@@ -140,7 +142,7 @@ var Ark = (function () {
     ['x','y','delta','alpha'].forEach(k=>{var v=text(values[k]);if(!['','-','0','1','2','3'].includes(v))throw Error('モジュールは1〜3で選択してください。');out[k]=v===''||v==='-'?v:Number(v);});
     return out;
   }
-  return {jobs:jobs,caps:caps,modules:modules,fields:fields,columns:columns,text:text,name:name,fromRow:fromRow,maxed:maxed,mastered:mastered,summarize:summarize,search:search,validate:validate};
+  return {jobs:jobs,caps:caps,modules:modules,fields:fields,columns:columns,text:text,name:name,fromRow:fromRow,maxed:maxed,mastered:mastered,hasPotential:hasPotential,summarize:summarize,search:search,validate:validate};
 })();
 if(typeof module!=='undefined')module.exports=Ark;
 </script><script>(function(){
@@ -233,12 +235,12 @@ if(typeof module!=='undefined')module.exports=Ark;
   function summaryOverview(){
     var groups=[['全オペ',data.operators],['★4〜6',data.operators.filter(o=>o.rarity>=4)],...[6,5,4].map(r=>['★'+r,data.operators.filter(o=>o.rarity===r)])].map(([label,list])=>{
       var owned=list.filter(o=>o.owned),eligible=owned.filter(o=>o.rarity>=4);
-      return {label:label,available:list.length,count:owned.length,max:owned.filter(Ark.maxed).length,mastered:eligible.filter(Ark.mastered).length,masteryCount:eligible.length,potential:owned.filter(o=>o.potential>=6).length};
+      return {label:label,available:list.length,count:owned.length,max:owned.filter(Ark.maxed).length,mastered:eligible.filter(Ark.mastered).length,masteryCount:eligible.length,potential:owned.filter(o=>o.potential>=6).length,potentialCount:owned.filter(Ark.hasPotential).length};
     });
-    var metrics=[['所持オペレーター','count','available','list'],['レベルMAX','max','count','chart'],['全スキル特化3','mastered','masteryCount','check'],['完凸','potential','count','chart']];
-    return '<div class="overview summary-overview">'+metrics.map(([label,key,denominator,ic])=>'<section class="metric"><h2 class="metric-label">'+label+icon(ic)+'</h2><dl class="metric-comparison">'+groups.map(g=>'<div><dt>'+g.label+'</dt><dd><strong>'+g[key]+'</strong><span>'+(key==='count'?' / '+g[denominator]+'人':'人')+'</span><small>'+percent(g[key],g[denominator])+'</small></dd></div>').join('')+'</dl></section>').join('')+'</div><p class="section-note summary-scope">全スキル特化3は★4〜6が対象です。レベルMAX・完凸の割合は、各範囲の所持人数を基準にしています。</p>';
+    var metrics=[['所持オペレーター','count','available','list'],['レベルMAX','max','count','chart'],['全スキル特化3','mastered','masteryCount','check'],['完凸','potential','potentialCount','chart']];
+    return '<div class="overview summary-overview">'+metrics.map(([label,key,denominator,ic])=>'<section class="metric"><h2 class="metric-label">'+label+icon(ic)+'</h2><dl class="metric-comparison">'+groups.map(g=>'<div><dt>'+g.label+'</dt><dd><strong>'+g[key]+'</strong><span>'+(key==='count'?' / '+g[denominator]+'人':'人')+'</span><small>'+percent(g[key],g[denominator])+'</small></dd></div>').join('')+'</dl></section>').join('')+'</div><p class="section-note summary-scope">全スキル特化3は★4〜6が対象です。レベルMAXの割合は各範囲の所持人数が基準です。完凸率は潜在が「-」のオペレーターを分母から除外し、空欄は含めます。</p>';
   }
-  function renderSummary(){var s=Ark.summarize(data.operators,summaryRarity),t=s.total;document.getElementById('summary-content').innerHTML='<div class="summary-table-wrap"><table class="summary-table"><thead><tr><th scope="col">職業</th><th scope="col">所持人数</th><th scope="col">Lv MAX / 割合</th><th scope="col">特化3 / 対象スキル</th><th scope="col">全特化人数</th><th scope="col">完凸 / 割合</th></tr></thead><tbody>'+[...s.rows,t].map(c=>'<tr><td>'+c.job+'</td><td>'+c.count+'</td><td>'+c.max+'<small>'+percent(c.max,c.count)+'</small></td><td>'+c.m3+' / '+c.skills+'<small>'+percent(c.m3,c.skills)+'</small></td><td>'+c.mastered+'</td><td>'+c.potential+'<small>'+percent(c.potential,c.count)+'</small></td></tr>').join('')+'</tbody></table></div><p class="section-note">職業別の集計は★4〜6が対象です。スキル欄が「-」の枠は分母から除外し、未入力の枠は含めます。潜在6以上は完凸、レベルMAXは最終昇進段階と上限レベルの両方で判定します。</p>';}
+  function renderSummary(){var s=Ark.summarize(data.operators,summaryRarity),t=s.total;document.getElementById('summary-content').innerHTML='<div class="summary-table-wrap"><table class="summary-table"><thead><tr><th scope="col">職業</th><th scope="col">所持人数</th><th scope="col">Lv MAX / 割合</th><th scope="col">特化3 / 対象スキル</th><th scope="col">全特化人数</th><th scope="col">完凸 / 割合</th></tr></thead><tbody>'+[...s.rows,t].map(c=>'<tr><td>'+c.job+'</td><td>'+c.count+'</td><td>'+c.max+'<small>'+percent(c.max,c.count)+'</small></td><td>'+c.m3+' / '+c.skills+'<small>'+percent(c.m3,c.skills)+'</small></td><td>'+c.mastered+'</td><td>'+c.potential+'<small>'+percent(c.potential,c.potentialCount)+'</small></td></tr>').join('')+'</tbody></table></div><p class="section-note">職業別の集計は★4〜6が対象です。スキル欄が「-」の枠は分母から除外し、未入力の枠は含めます。潜在6以上は完凸とし、「-」は完凸率の分母から除外します（空欄は含む）。レベルMAXは最終昇進段階と上限レベルの両方で判定します。</p>';}
   function openOperator(o){selected=o;dirty=false;saving=false;dialog.classList.toggle('editor-dialog',admin);if(admin){draft={...o.training};renderEditor();}else renderRequest();dialog.showModal();}
   function dialogHeader(eyebrow){var title='<h2 id="dialog-title">'+e(selected.name)+'</h2>';return '<div class="dialog-top">'+(admin?title:'<p class="eyebrow">'+eyebrow+'</p>')+'<button class="icon-button" data-close aria-label="閉じる">'+icon('close')+'</button></div>'+(admin?'':title)+'<p class="dialog-sub">★'+selected.rarity+' · '+e(selected.job)+(admin?'':' · '+(selected.owned?'所持済み':'未所持'))+'</p>';}
   function renderRequest(){dialog.innerHTML='<div class="dialog-body">'+dialogHeader('SUPPORT REQUEST')+'<div class="detail-stats"><div><small>昇進</small><strong>'+n(selected.elite)+'</strong></div><div><small>レベル</small><strong>'+n(selected.level)+'</strong></div><div><small>潜在</small><strong>'+n(selected.potential)+'</strong></div></div><div class="detail-section"><p>スキル特化</p>'+skills(selected)+'</div><div class="detail-section"><p>モジュール</p>'+modules(selected)+'</div><p class="dialog-notice">このオペレーターをリクエストしますか？<br>送信ボタンを押すとDiscordに通知します。連続したリクエストは3分間のCTがあります。</p><div class="dialog-actions"><button class="primary" id="send-request">'+icon('send')+'リクエスト送信</button><button class="secondary" data-close>キャンセル</button></div><p class="dialog-message" id="dialog-message" role="status"></p></div>';bindClose();document.getElementById('send-request').onclick=sendRequest;tick();}

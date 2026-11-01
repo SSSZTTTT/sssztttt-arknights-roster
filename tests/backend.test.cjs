@@ -18,6 +18,17 @@ function fixture(kind='PublicApi'){
   return {ctx,props,row,sheet,ss,writes,notifications,history};
 }
 const input=(id='a',client='b',name='ア')=>({requestId:id.repeat(36),clientId:client.repeat(36),name});
+
+test('public and private responses retain absent potential and editing another field preserves it',()=>{
+  const f=fixture('Admin');f.row[6]='-';
+  assert.equal(f.ctx.webRoster_(false).operators[0].potential,'-');
+  const op=f.ctx.getTrainingData().operators[0];
+  assert.equal(op.potential,'-');assert.equal(op.training.potential,'-');
+  const saved=f.ctx.saveTraining({name:op.name,version:op.version,values:{...op.training,s2:'M2'}});
+  assert.equal(saved.potential,'-');assert.equal(f.row[6],'-');
+  assert.deepEqual(f.writes.map(w=>w.c),[9]);
+  f.row[6]='';assert.equal(f.ctx.webRoster_(false).operators[0].potential,null);
+});
 test('support sends once, disables mentions, writes history only after Discord success',()=>{
   const f=fixture();assert.equal(f.ctx.receiveSupport_(input()).status,'sent');
   assert.equal(f.ctx.receiveSupport_(input()).status,'sent');

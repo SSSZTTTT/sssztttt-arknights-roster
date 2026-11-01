@@ -22,6 +22,27 @@ test('potential beyond six is retained only for star six',()=>{
   assert.equal(Ark.validate({...values,potential:28},6).potential,28);
   assert.throws(()=>Ark.validate({...values,potential:7},5));
 });
+
+test('potential dash survives row normalization while blanks remain unknown',()=>{
+  const headers=['オペレーター名','レア','職業','所持状態','潜在'];
+  for(const [input,expected,eligible] of [['-', '-',false],[' － ','-',false],['',null,true],[null,null,true],[6,6,true],[28,28,true]]){
+    const row=Ark.fromRow(['テスト',6,'前衛',true,input],headers);
+    assert.equal(row.potential,expected);
+    assert.equal(Ark.hasPotential(row),eligible);
+  }
+});
+
+test('potential rates exclude absent potential without excluding missing data or other training metrics',()=>{
+  const list=[op({potential:'-'}),op({potential:6}),op({potential:null}),op({potential:5}),op({rarity:6,potential:28,job:'前衛'}),op({potential:'-',owned:false}),op({rarity:3,potential:6})];
+  const summary=Ark.summarize(list),t=summary.total;
+  assert.deepEqual([t.count,t.potential,t.potentialCount,t.mastered],[5,2,4,5]);
+  const caster=summary.rows.find(c=>c.job==='術師');
+  assert.deepEqual([caster.count,caster.potential,caster.potentialCount],[4,1,3]);
+  assert.equal(Ark.summarize(list,5).total.potentialCount,3);
+  assert.equal(Ark.summarize(list,6).total.potentialCount,1);
+  const absent=Ark.summarize([op({potential:'-'})]).total;
+  assert.deepEqual([absent.count,absent.potential,absent.potentialCount],[1,0,0]);
+});
 test('validation rejects invalid fields, formulas, fractions and above-cap values',()=>{
   for(const bad of [{...values,owned:'true'},{...values,level:81},{...values,level:1.5},{...values,level:'=NOW()'},{...values,s3:'M4'},{...values,x:4},{...values,extra:1}])assert.throws(()=>Ark.validate(bad,5));
   assert.throws(()=>Ark.validate({...values,elite:1,level:55},3));
