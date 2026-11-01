@@ -49,6 +49,17 @@
  .op-identity{grid-column:3;grid-row:1}.row-action{grid-column:4;grid-row:1}
 }
 
+/* スマホの入力画面はフィルターと下部メニューを薄くして一覧を広げる。 */
+@media(max-width:760px){
+ .admin-shell .class-tabs{gap:2px 4px;padding-bottom:4px;margin-bottom:8px}
+ .admin-shell .class-tab,.admin-shell .rarity-filter{min-height:34px;height:34px;padding:4px 2px}
+ .admin-shell .navigation{padding:3px 8px max(3px,env(safe-area-inset-bottom))}
+ .admin-shell .nav-item{flex-direction:row;gap:4px;min-width:0;min-height:40px;padding:4px 2px;font-size:10px;white-space:nowrap}
+ .admin-shell .nav-item svg{width:16px;height:16px;flex-shrink:0}
+ .admin-shell .main{padding-bottom:calc(68px + env(safe-area-inset-bottom))}
+ .shell.admin-shell~.toast{bottom:calc(58px + env(safe-area-inset-bottom))}
+}
+
 /* 本人用の編集フォームをコンパクトにまとめる。 */
 .editor-dialog .dialog-top{align-items:flex-start}.editor-dialog .dialog-top h2{font-size:20px;margin:0;min-width:0;overflow-wrap:anywhere;line-height:1.5}.editor-dialog .dialog-top .icon-button{flex-shrink:0}.editor-dialog .dialog-sub{margin-top:3px}
 .editor-dialog .owned-switch{display:inline-flex;justify-content:flex-start;align-items:center;gap:8px;min-height:36px;margin:8px 0 10px;padding:0 4px;background:none;border-radius:4px;font-size:12px;cursor:pointer}.editor-dialog .owned-switch input{width:18px;height:18px;margin:0}
@@ -183,7 +194,7 @@ if(typeof module!=='undefined')module.exports=Ark;
   function stamp(date){if(!date)return '—';var d=new Date(date);return Number.isNaN(+d)?e(date):new Intl.DateTimeFormat('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'}).format(d);}
   function toast(message){var el=document.getElementById('toast');el.textContent=message;el.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.hidden=true,4000);}
   function shell(){
-    root.innerHTML='<div class="shell"><aside class="sidebar"><div class="brand"><div class="brand-mark">'+icon('logo')+'</div><div><div class="brand-name">OPERATOR</div><div class="brand-sub">ROSTER</div></div></div><p class="nav-label">'+(admin?'WORKSPACE':'OVERVIEW')+'</p><nav class="navigation" aria-label="メインメニュー">'+[['roster',admin?'育成を記録':'オペレーター','list'],['summary','統計','chart'],['history','リクエスト履歴','clock']].map(([key,label,ic])=>'<button class="nav-item" data-view="'+key+'" '+(key===view?'aria-current="page"':'')+'>'+icon(ic)+label+'</button>').join('')+'</nav><div class="sidebar-foot"><div class="connection"><span class="dot"></span>'+(admin?'PRIVATE WORKSPACE':'TRAINING RECORDS')+'</div>アークナイツ 育成記録<br>非公式の個人記録サイト</div></aside><main class="main" id="main"><div class="topline"><div class="top-actions">'+(admin?'<span class="tiny-tag">本人専用</span>':'')+'<button class="icon-button" id="toggle-search" aria-label="検索" aria-controls="search-panel" aria-expanded="false">'+icon('search')+'</button><button class="icon-button" id="refresh" aria-label="最新の記録に更新">'+icon('refresh')+'</button></div></div><div id="screen"></div></main></div><dialog class="dialog" id="detail-dialog" aria-labelledby="dialog-title"></dialog><div class="toast" id="toast" role="status" hidden></div>';
+    root.innerHTML='<div class="shell'+(admin?' admin-shell':'')+'"><aside class="sidebar"><div class="brand"><div class="brand-mark">'+icon('logo')+'</div><div><div class="brand-name">OPERATOR</div><div class="brand-sub">ROSTER</div></div></div><p class="nav-label">'+(admin?'WORKSPACE':'OVERVIEW')+'</p><nav class="navigation" aria-label="メインメニュー">'+[['roster',admin?'育成を記録':'オペレーター','list'],['summary','統計','chart'],['history','リクエスト履歴','clock']].map(([key,label,ic])=>'<button class="nav-item" data-view="'+key+'" '+(key===view?'aria-current="page"':'')+'>'+icon(ic)+label+'</button>').join('')+'</nav><div class="sidebar-foot"><div class="connection"><span class="dot"></span>'+(admin?'PRIVATE WORKSPACE':'TRAINING RECORDS')+'</div>アークナイツ 育成記録<br>非公式の個人記録サイト</div></aside><main class="main" id="main"><div class="topline"><div class="top-actions">'+(admin?'<span class="tiny-tag">本人専用</span>':'')+'<button class="icon-button" id="toggle-search" aria-label="検索" aria-controls="search-panel" aria-expanded="false">'+icon('search')+'</button><button class="icon-button" id="refresh" aria-label="最新の記録に更新">'+icon('refresh')+'</button></div></div><div id="screen"></div></main></div><dialog class="dialog" id="detail-dialog" aria-labelledby="dialog-title"></dialog><div class="toast" id="toast" role="status" hidden></div>';
     dialog=document.getElementById('detail-dialog');
     dialog.addEventListener('cancel',ev=>{ev.preventDefault();closeDialog();});dialog.addEventListener('click',ev=>{if(ev.target===dialog)closeDialog();});
     document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;document.querySelectorAll('[data-view]').forEach(el=>{if(el===b)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});renderScreen();window.scrollTo({top:0});});
