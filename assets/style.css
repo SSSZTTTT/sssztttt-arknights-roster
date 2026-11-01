@@ -12,3 +12,19 @@
 
 /* 一覧の操作は小さい画面でも横スクロールせず使えるようにする。 */
 .main{position:relative}.topline{height:0;margin:0}.top-actions{position:absolute;top:35px;right:42px}.page-heading{padding-right:48px}.support-action svg{width:25px;height:25px;stroke-width:1.7}.support-action{min-height:32px}@media(min-width:1400px){.top-actions{right:55px}}@media(min-width:761px) and (max-width:1100px){.top-actions{top:29px;right:25px}}@media(max-width:760px){.main{position:static}.top-actions{top:18px;right:20px}.page-heading{padding-right:0}.toolbar{grid-template-columns:minmax(0,1fr)}.class-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;margin:0 0 14px;padding:0 0 8px;overflow:visible}.class-tab{min-width:0;padding:8px 2px;border-radius:6px;min-height:44px}.class-tab.active{background:var(--blue-deep)}.class-tab.active:after{left:8px;right:8px}.support-action svg{width:26px;height:26px}}
+
+/* スマホの上段は名前・育成段階・操作、下段はスキルとモジュール。 */
+.op-training{display:contents}.module-heading{display:none}.brand-sub{letter-spacing:1.4px}
+@media(max-width:760px){
+  .oprow{grid-template-columns:minmax(0,1fr) auto 32px;gap:10px 8px;align-items:start}
+  .op-identity{grid-column:1;grid-row:1;align-self:center}
+  .op-level{grid-column:2;grid-row:1;display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 6px;max-width:108px;text-align:left;align-self:center}
+  .op-level small{display:inline;font-size:13px;margin:0}
+  .op-level .max-tag{flex-basis:100%;margin:0;text-align:right}
+  .row-action{grid-column:3;grid-row:1;justify-content:center;align-self:center;min-height:36px}
+  .row-action .action-label{display:none}.row-action svg{width:24px;height:24px}
+  .op-training{grid-column:1/-1;grid-row:2;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 14px;border-top:1px solid var(--line);padding-top:10px}
+  .op-training .row-skills{padding:0;gap:4px}
+  .op-training .module-pills.row-modules{display:flex;align-items:baseline;padding:0;gap:8px;font-size:15px}
+  .module-heading{display:inline;font-size:11px;color:var(--muted);font-weight:500}
+}
