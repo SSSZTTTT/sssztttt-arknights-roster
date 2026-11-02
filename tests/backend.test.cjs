@@ -14,7 +14,7 @@ function fixture(kind='PublicApi'){
   ctx.HtmlService={createHtmlOutput:html,createHtmlOutputFromFile(name){if(ctx.htmlError)throw Error('missing '+name);return html('<html>入力画面</html>');}};
   // Placeholder value, no live network: UrlFetchApp is entirely mocked.
   props.set('DISCORD_WEBHOOK_URL','https://discord.com/api/webhooks/0/FAKE_TEST_ONLY');
-  for(const file of ['src/model.js','backend/Core.gs','backend/'+kind+'.gs'])vm.runInContext(fs.readFileSync(file,'utf8'),ctx);
+  for(const file of ['src/model.js','backend/Core.gs','backend/Training.gs','backend/'+kind+'.gs'])vm.runInContext(fs.readFileSync(file,'utf8'),ctx);
   return {ctx,props,row,sheet,ss,writes,notifications,history,opened};
 }
 const input=(id='a',client='b',name='ア')=>({requestId:id.repeat(36),clientId:client.repeat(36),name});

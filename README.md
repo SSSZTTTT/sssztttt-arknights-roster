@@ -9,7 +9,67 @@
 | 独立したGAS | 本人専用の育成入力画面、Googleのデプロイ権限によるアクセス制限、シート更新 |
 | Google Sheets | 年別オペレーターデータ、集計、履歴 |
 
-Cloud Runは使用しません。GASが自動的に利用する標準のGoogle Cloudプロジェクトは必要ですが、Cloud Consoleで別途構築・設定する構成ではありません。
+GitHub版の入力画面を `/edit/` に追加しました。白基調のUIはGitHub Pagesで表示し、別の認証付きGASに読み書きを依頼します。既存の本人専用GASはそのまま残せます。
+
+Cloud Runは使用しません。従来のGAS版入力には追加のCloud設定は不要です。新しいGitHub版入力では、Googleログイン用のOAuthクライアントだけGoogle Cloud Consoleで設定します。
+
+## GitHub版入力ツールの初回設定
+
+入力画面: `https://sssztttt.github.io/sssztttt-arknights-roster/edit/`
+
+接続先を設定するまでは「接続準備中」と表示し、Googleログイン・シートアクセスは開始しません。
+
+### A. Googleログインを用意する
+
+1. [Google Cloud Console](https://console.cloud.google.com/) で、ログイン用のプロジェクトを作成または選択します。Cloud Runやデータベースは作りません。既存GASのCloudプロジェクトを切り替える必要もありません。
+2. 「Google Auth Platform」のブランディングを設定します。アプリ名は「アークナイツ育成入力」などにします。連絡先には自分のメールアドレスを設定します。
+3. 対象は「外部」、テストユーザーには利用する自分のGoogleアカウントを追加します。本人用なのでテスト段階から接続確認できます。
+4. データアクセスは `openid` と `https://www.googleapis.com/auth/userinfo.email` の基本的な本人確認用スコープだけを使います。Googleログイン側でシートの権限を要求する必要はありません。
+5. クライアントを作成し、種類は「ウェブ アプリケーション」にします。
+6. 「承認済みのJavaScript生成元」に `https://sssztttt.github.io` を登録します。
+7. 「承認済みのリダイレクトURI」にも `https://sssztttt.github.io` を登録します。今回のGoogleポップアップ方式では、認証コード交換時のURIは `/edit/` ではなくページのオリジンです。
+8. クライアントIDとクライアントシークレットを控えます。シークレットはGASのプロパティにだけ入力し、チャット・GitHub・画面のJavaScriptには貼りません。
+
+### B. GitHub入力用のGASを新しく作る
+
+既存の入力用GAS・公開用GASには追加しません。新しい独立GASプロジェクトを作り、以下の専用コードだけを入れます。
+
+1. `gas/editor` の `Model.gs`・`Core.gs`・`Training.gs`・`Code.gs` を追加します。全文コピー用の「GitHub入力用_Code.gs.txt」なら4ファイル分を結合してあるので、1つのCode.gsへ全文貼り付けるだけでも動きます。両方の入れ方を同時には行わないでください。
+2. `gas/editor/appsscript.json` を反映します。このGASには `Index.html` は不要です。
+3. スクリプトプロパティに次を設定します。
+
+| キー | 設定する値 |
+| --- | --- |
+| `SPREADSHEET_ID` | 現在使用しているスプレッドシートのID |
+| `OAUTH_CLIENT_ID` | Aで作成したOAuthクライアントID |
+| `OAUTH_CLIENT_SECRET` | Aで作成したクライアントシークレット |
+| `OWNER_EMAIL` | ログインを許可する自分のGoogleアカウントのメールアドレス |
+| `EDITOR_ORIGIN` | `https://sssztttt.github.io`（末尾のスラッシュやリポジトリ名は付けない） |
+
+4. 新しいウェブアプリとして「実行するユーザー：自分」「アクセスできるユーザー：全員」でデプロイします。新しいAPIは匿名アクセスできるURLでも、Google本人認証に成功しない限り育成データの取得・保存を実行しません。従来の `gas/admin` は引き続き「自分のみ」です。従来コードを「全員」に変更しないでください。
+5. 自分のアカウントでGASの必要権限を確認・許可し、末尾 `/exec` のURLを控えます。このURL自体は秘密情報ではありません。
+
+### C. GitHubと接続する
+
+1. Bの新しい `/exec` URLだけを `src/editor-config.js` の `apiUrl` に設定します。公開用APIや従来の入力画面のURLは使いません。
+2. `node scripts/build.cjs`、`node scripts/check.cjs`、`node --test tests/*.test.cjs` を実行し、生成物もGitHubへ反映します。
+3. `/edit/` を開き、「Googleでログイン」から指定したアカウントでログインします。Safariのポップアップが開かなければ、そのページのポップアップ許可を確認します。
+4. 一覧取得、1項目の保存・再取得、ログアウトを確認します。別アカウントでは入力データの取得・保存が拒否されることを確認します。
+
+GASデプロイとGoogleログインの実接続、iPhoneのスクロールは設定後に実機確認が必要です。公開ページのサポート依頼とは別の接続で、Discord通知は行いません。
+
+### 認証と保存の動作
+
+- Googleからブラウザに返された一度限りの認証コードを、GASがGoogleのHTTPSトークンエンドポイントへ直接送って確認します。クライアントが自己申告したメールやIDトークンではログインできません。検証するのは発行元・クライアントID・期限・メール確認済み状態・許可メール・GoogleアカウントIDです。
+- 認証開始時のstateは5分で失効し、一度だけ使用できます。ブラウザごとのランダム値にも結び付けます。初回に許可メールでログインしたGoogleアカウントIDを `OWNER_GOOGLE_SUB` に自動登録し、以後はそのIDも照合します。
+- 入力用セッションは最大12時間・同時5件。ブラウザではこのタブのsessionStorage、GASではトークンのSHA-256ハッシュだけを保存します。Googleのアクセストークン・更新トークン・IDトークンは保存しません。タブの保存領域が使えない環境ではメモリにだけ保持します。
+- すべての取得・保存要求にセッション照合があります。秘密情報をURL・JSONPに入れません。POSTの返答は非表示iframeから、固定のGitHubオリジンへpostMessageで返します。画面はiframeの外で表示し、受信側は返答元オリジン・要求専用iframeの子孫ウィンドウ・ランダムな照合値をすべて確認します。
+- `ALLOWALL` はこの通信専用の返答ページだけに使います。返答ページに育成操作UIはなく、他サイトへは返答を送りません。公開API・本人専用GASのアクセス設定は変更しません。
+- 保存結果を受け取れなかった場合は、自動再送も成功表示もしません。一覧を更新して実際の保存状態を確認してください。保存前の版照合・入力値検証・変更列だけの保存は従来と共通です。
+- ログアウトでそのセッションを失効させます。全端末を失効させるには `SESSION_VERSION` プロパティを別の値に変えてください。許可アカウントを変更する場合は `OWNER_EMAIL` を変更し、`OWNER_GOOGLE_SUB` を削除してから、新しい本人アカウントでログインします。
+- ログイン開始は全体で1時間80回まで。これは濫用の軽減策で、GASの実行割当を大量アクセスから完全に守るものではありません。
+
+参考: [Googleのコードモデル](https://developers.google.com/identity/oauth2/web/guides/use-code-model)、[OpenID Connect](https://developers.google.com/identity/openid-connect/openid-connect)、[GASのiframe設定](https://developers.google.com/apps-script/reference/html/x-frame-options-mode)。
 
 ## 初回設定
 
@@ -42,7 +102,7 @@ Webhook URLはコードやGitHub、公開サイトに入れません。以前共
 ### 2. 入力用：独立したGAS
 
 1. [Apps Script](https://script.google.com/home) で新しいプロジェクトを作成します。
-2. `gas/admin` の `Code.gs`・`Core.gs`・`Model.gs` を追加し、HTMLファイル `Index` を作って `Index.html` の内容を貼り付けます。
+2. `gas/admin` の `Code.gs`・`Core.gs`・`Model.gs`・`Training.gs` を追加し、HTMLファイル `Index` を作って `Index.html` の内容を貼り付けます。
 3. プロジェクト設定からマニフェストの表示を有効にして、`appsscript.json` を同名ファイルに反映します。
 4. スクリプト プロパティに `SPREADSHEET_ID` を設定します。入力用GASにWebhookや `OWNER_EMAIL` は不要です。以前登録した `OWNER_EMAIL` は削除して構いません（残っていても参照しません）。
 5. ウェブアプリとしてデプロイし、実行するユーザーを自分、アクセスできるユーザーを **自分のみ** に設定します。このアカウントでスマホから `/exec` URLを開いて使います。

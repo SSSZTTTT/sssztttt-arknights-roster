@@ -14,16 +14,17 @@ function privacyIssues(source,file){
   if(spreadsheetPatterns.some(pattern=>pattern.test(source)))issues.push('Hardcoded spreadsheet ID');
   const webhooks=source.match(/https:\/\/discord\.com\/api\/webhooks\/\d+\/[\w-]+/g)||[];
   if(webhooks.some(url=>!file.startsWith('tests/')||!url.endsWith('/0/FAKE_TEST_ONLY')))issues.push('Discord webhook');
+  if(/GOCSPX-[A-Za-z0-9_-]{10,}/.test(source))issues.push('Google OAuth client secret');
   return issues;
 }
 
 function check(){
   const root=path.resolve(__dirname,'..');
-  for(const f of ['src/model.js','src/config.js','src/transport.js','src/app.js','backend/Core.gs','backend/Admin.gs','backend/PublicApi.gs'])new vm.Script(fs.readFileSync(path.join(root,f),'utf8'),{filename:f});
+  for(const dir of ['src','backend'])for(const name of fs.readdirSync(path.join(root,dir)).filter(n=>/\.(js|gs)$/.test(n))){const f=dir+'/'+name;new vm.Script(fs.readFileSync(path.join(root,f),'utf8'),{filename:f});}
   const files=new Set(execFileSync('git',['ls-files','-z'],{cwd:root,encoding:'utf8'}).split('\0').filter(Boolean));
   // Also inspect newly generated or untracked files in publication/source directories.
   function collect(dir){for(const entry of fs.readdirSync(path.join(root,dir),{withFileTypes:true})){const f=dir+'/'+entry.name;if(entry.isDirectory())collect(f);else files.add(f);}}
-  for(const dir of ['assets','backend','gas','src','scripts','tests'])collect(dir);
+  for(const dir of ['assets','backend','gas','src','scripts','tests','edit'])collect(dir);
   files.add('index.html');
   const problems=[];
   for(const f of files){
