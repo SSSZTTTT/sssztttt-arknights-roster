@@ -1,0 +1,30 @@
+/* 入力用GASのHTMLにだけ組み込むライトテーマ。寸法・操作は共通CSSを使う。 */
+:root{color-scheme:light;--bg:#f5f6f8;--panel:#ffffff;--panel2:#eef1f5;--line:#d9dfe7;--text:#202b3a;--muted:#596779;--blue:#1764bb;--blue-deep:#e8f1fc;--green:#25745f;--danger:#b42332}
+html,body{background:var(--bg);color-scheme:light}
+.shell .sidebar,.shell .navigation{background:var(--panel)}
+.nav-label,.table-labels,.list-footer{color:var(--muted)}
+.heading-index{color:#d9dfe7}
+.metric-label svg{color:var(--muted)}
+.preview-banner{border-color:var(--line);background:var(--blue-deep);color:var(--text)}
+.oprow:hover{background:#f1f6fd}
+.stars{color:#87642d}
+.unowned{color:var(--muted);background:var(--panel2)}
+.skill-pill{background:var(--panel2);color:var(--text)}
+.skill-pill b{color:var(--muted)}
+.skill-pill.complete{background:var(--blue-deep);color:var(--blue)}
+.skill-pill.absent{background:#f1f3f6;color:var(--muted)}
+.module-pills{color:var(--text)}
+.primary,.skip{color:#ffffff}
+.primary:hover{background:#10539f}
+.error-box{border-color:#e6b4ba;background:#fff1f2}
+.error-box p{color:#8f2533}
+.summary-switch button.active{border-color:var(--blue)}
+.summary-table th,.summary-table th:first-child{background:var(--panel2)}
+.summary-table tr:last-child td{background:var(--blue-deep)}
+.dialog{border-color:var(--line);box-shadow:0 24px 80px #26375130}
+.dialog::backdrop{background:#17263d55;backdrop-filter:blur(4px)}
+.field input,.field select{border-color:#bdc8d5;background:var(--panel)}
+.field input::placeholder,.search input::placeholder{color:var(--muted);opacity:1}
+.editor-save{background:var(--panel)}
+.toast{border-color:var(--line);background:var(--panel);box-shadow:0 8px 25px #26375120}
+.initial-line{background:#b68b16;box-shadow:0 0 6px #b68b1625}
