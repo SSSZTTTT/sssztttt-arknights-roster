@@ -8,9 +8,20 @@
   function percent(a,b){return b?(a/b*100).toFixed(1)+'%':'—';}
   function stamp(date){if(!date)return '—';var d=new Date(date);return Number.isNaN(+d)?e(date):new Intl.DateTimeFormat('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'}).format(d);}
   function toast(message){var el=document.getElementById('toast');el.textContent=message;el.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.hidden=true,4000);}
+  var headerObserver;
+  function observeHeader(){
+    if(headerObserver)headerObserver.disconnect();
+    var header=document.querySelector('.sidebar');
+    function measure(){
+      document.documentElement.style.setProperty('--mobile-header-height',header.getBoundingClientRect().height+'px');
+      var region=document.querySelector('.roster-scroll');
+      if(region)region.tabIndex=window.matchMedia('(max-width:760px)').matches?-1:0;
+    }
+    measure();headerObserver=new ResizeObserver(measure);headerObserver.observe(header);
+  }
   function shell(){
     root.innerHTML='<div class="shell'+(admin?' admin-shell':'')+'"><aside class="sidebar"><div class="brand"><div class="brand-mark">'+icon('logo')+'</div><div><div class="brand-name">OPERATOR</div><div class="brand-sub">ROSTER</div></div></div>'+(admin?'<p class="nav-label">WORKSPACE</p>':'')+'<nav class="navigation" aria-label="メインメニュー">'+[['roster',admin?'育成を記録':'オペレーター','list'],['summary','統計','chart'],['history','リクエスト履歴','clock']].map(([key,label,ic])=>'<button class="nav-item" data-view="'+key+'" '+(key===view?'aria-current="page"':'')+'>'+icon(ic)+label+'</button>').join('')+'</nav><div class="sidebar-foot">'+(admin?'<div class="connection"><span class="dot"></span>PRIVATE WORKSPACE</div>':'')+'非公式の個人記録サイト</div></aside><main class="main" id="main"><div class="topline"><div class="top-actions">'+(admin?'<span class="tiny-tag">本人専用</span>':'')+'<button class="icon-button" id="toggle-search" aria-label="検索" aria-controls="search-panel" aria-expanded="false">'+icon('search')+'</button><button class="icon-button" id="refresh" aria-label="最新の記録に更新">'+icon('refresh')+'</button></div></div><div id="screen"></div></main></div><dialog class="dialog" id="detail-dialog" aria-labelledby="dialog-title"></dialog><div class="toast" id="toast" role="status" hidden></div>';
-    dialog=document.getElementById('detail-dialog');
+    observeHeader();dialog=document.getElementById('detail-dialog');
     dialog.addEventListener('cancel',ev=>{ev.preventDefault();closeDialog();});dialog.addEventListener('click',ev=>{if(ev.target===dialog)closeDialog();});
     document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;document.querySelectorAll('[data-view]').forEach(el=>{if(el===b)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});renderScreen();window.scrollTo({top:0});});
     document.getElementById('refresh').onclick=()=>load(true);document.getElementById('toggle-search').onclick=()=>setSearchOpen(!searchOpen);renderScreen();
@@ -46,7 +57,10 @@
     var list=Ark.search(data.operators,filters);
     document.getElementById('result-count').innerHTML='<strong>'+list.length+'</strong> / '+data.operators.length+' OPERATORS';
     document.getElementById('roster').innerHTML=list.length?list.map(operatorRow).join(''):'<div class="empty">'+icon('search')+'<strong>該当するオペレーターがいません</strong>名前や絞り込み条件を変えてみてください。<br><button class="text-button" id="reset-filters">絞り込みをリセット</button></div>';
-    document.querySelector('.roster-scroll').scrollTop=0;
+    var region=document.querySelector('.roster-scroll'),mobile=window.matchMedia('(max-width:760px)').matches;
+    region.tabIndex=mobile?-1:0;
+    if(mobile)window.scrollTo({top:0,behavior:'instant'});
+    else region.scrollTop=0;
     document.querySelectorAll('[data-edit-name],[data-request-name]').forEach(b=>b.onclick=()=>openOperator(data.operators.find(o=>o.name===(b.dataset.editName||b.dataset.requestName))));
     var reset=document.getElementById('reset-filters');if(reset)reset.onclick=()=>{filters={query:'',rarity:'',job:'',sort:'level'};renderScreen();};
   }

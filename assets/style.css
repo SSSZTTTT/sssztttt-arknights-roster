@@ -151,7 +151,7 @@
 @keyframes initial-breathe{from{opacity:1}to{opacity:.55}}
 @media(prefers-reduced-motion:reduce){.initial{transition:none}.initial-track,.initial-line{animation:none!important}.initial-line{transform:none}}
 
-/* 一覧画面は上部の操作を残し、カード領域だけをスクロールする。 */
+/* PCでは上部の操作を残し、カード領域だけをスクロールする。 */
 body:has(#roster){overflow:hidden}
 .shell:has(#roster){height:100dvh;min-height:0;overflow:hidden}
 .shell:has(#roster) .main{display:flex;flex-direction:column;min-height:0;height:100%;padding-top:18px;padding-bottom:12px}
@@ -165,13 +165,23 @@ body:has(#roster){overflow:hidden}
 .roster-scroll .table-labels{position:sticky;top:0;z-index:1;background:var(--bg)}
 .roster-scroll:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
 @media(max-width:760px){
- .shell:has(#roster){display:flex;flex-direction:column}
- .shell:has(#roster) .sidebar{flex-shrink:0;padding-top:max(8px,env(safe-area-inset-top))}
- .shell:has(#roster) .main{flex:1;height:auto;padding-top:8px;padding-bottom:calc(68px + env(safe-area-inset-bottom))}
+ /* Safariがページのスクロールを認識できるよう、一覧の高さ制限を外す。 */
+ html{scrollbar-width:none;scroll-padding-top:calc(var(--mobile-header-height,48px) + 150px)}
+ html::-webkit-scrollbar,body::-webkit-scrollbar{display:none;width:0;height:0}
+ body:has(#roster){overflow:visible}
+ .shell:has(#roster){display:block;height:auto;min-height:100svh;overflow:visible}
+ .shell .sidebar{position:sticky;top:0;z-index:30;height:auto;padding-top:max(8px,env(safe-area-inset-top));padding-bottom:8px;background:var(--bg)}
+ .shell:has(#roster) .main{display:block;height:auto;padding-top:0;padding-bottom:calc(68px + env(safe-area-inset-bottom))}
  .main:has(#roster) .topline{height:0;margin:0}
- .main:has(#roster) .top-actions{top:max(8px,env(safe-area-inset-top))}
- .roster-scroll{scroll-padding-top:0}
+ .shell .top-actions{position:fixed;top:max(8px,env(safe-area-inset-top));z-index:31}
+ .main:has(#roster) #screen{display:block}
+ .roster-controls{position:sticky;top:var(--mobile-header-height,48px);z-index:10;padding-top:0;display:flow-root}
+ .roster-scroll{overflow:visible;scroll-padding-top:0}
+ .shell .navigation{background:var(--bg)}
+ body:has(dialog[open]){overflow:hidden}
 }
+/* 入力用もHTMLとbodyの両方に背景色を設定する（GASの外枠は対象外）。 */
+html,body{background:var(--bg);color-scheme:dark}
 
 /* 記録を重ねるイメージの、軽い線で描いたシンボル。 */
 .brand-mark{background:transparent;color:var(--blue);clip-path:none}
