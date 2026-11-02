@@ -45,7 +45,7 @@ test('client-supplied identity tokens cannot bypass code exchange; failed exchan
 test('expired, revoked and configuration-invalidated sessions cannot read or write',()=>{
   for(const mode of ['expired','logout','version','owner','secret']){
     const f=fixture(),s=f.login();
-    if(mode==='expired')f.advance(12*3600000+1);
+    if(mode==='expired')f.advance(30*86400000+1);
     if(mode==='logout')f.request('logout',{},s.token);
     if(mode==='version')f.props.set('SESSION_VERSION','2');
     if(mode==='owner')f.props.set('OWNER_EMAIL','changed@example.test');
@@ -56,6 +56,26 @@ test('expired, revoked and configuration-invalidated sessions cannot read or wri
 test('anonymous state storage and hourly login attempts are bounded',()=>{
   const f=fixture();for(let i=0;i<80;i++)f.prepare();assert.equal([...f.props.keys()].filter(k=>k.startsWith('ARK_EDITOR_CHALLENGE_')).length,20);
   assert.throws(()=>f.prepare(),/しばらく待って/);f.advance(3600001);f.prepare();assert.equal([...f.props.keys()].filter(k=>k.startsWith('ARK_EDITOR_CHALLENGE_')).length,1);
+});
+test('read and save renew the idle deadline for thirty days; expired sessions stay expired',()=>{
+  const f=fixture(),s=f.login(),day=86400000,start=f.c.Date.now();
+  assert.equal(s.expiresAt,start+30*day);
+  const key='ARK_EDITOR_SESSION_'+f.c.editorHash_(s.token);
+  f.advance(29*day);
+  assert.match(f.request('read',{},s.token).text,new RegExp('"sessionExpiresAt":'+(start+59*day)));
+  f.advance(29*day);
+  assert.match(f.request('save',{name:'ア'},s.token).text,new RegExp('"sessionExpiresAt":'+(start+88*day)));
+  const last=f.props.get(key);f.advance(30*day);
+  assert.match(f.request('read',{expiresAt:start+999*day},s.token).text,/AUTH_REQUIRED/);
+  assert.equal(f.props.get(key),last);assert.equal(f.reads,1);assert.equal(f.writes,1);
+});
+test('renewal never recreates logged-out sessions and checks config again inside the lock',()=>{
+  const f=fixture(),s=f.login(),old=f.c.editorConfig_();
+  f.props.set('SESSION_VERSION','2');
+  assert.throws(()=>f.c.editorRequireSession_(s.token,old),/ログイン期限/);
+  f.request('logout',{},s.token);
+  assert.throws(()=>f.c.editorRequireSession_(s.token,f.c.editorConfig_()));
+  assert.equal([...f.props.keys()].filter(k=>k.startsWith('ARK_EDITOR_SESSION_')).length,0);
 });
 test('only five active sessions are retained and raw tokens are not properties',()=>{
   const f=fixture(),sessions=[];for(let i=0;i<6;i++){sessions.push(f.login());f.advance(1);}

@@ -1,11 +1,25 @@
 (function(){
   'use strict';
   var config=window.ARK_EDITOR_CONFIG||{},auth=document.getElementById('auth-screen'),button=document.getElementById('google-login'),message=document.getElementById('auth-message'),retry=document.getElementById('auth-retry'),app=document.getElementById('app');
-  var rpc,session=null,client=null,challenge=null,bindingSecret='',launched=false,firstData=null,gisPromise;
+  var rpc,session=null,client=null,challenge=null,bindingSecret='',launched=false,firstData=null,gisPromise,authGeneration=0;
   var storageKey='ark_editor_session_v1:'+location.pathname;
   function status(text,error){message.textContent=text;message.classList.toggle('error',!!error);}
-  function storeSession(value){session=value;try{if(value)sessionStorage.setItem(storageKey,JSON.stringify({...value,endpoint:config.apiUrl}));else sessionStorage.removeItem(storageKey);}catch(_){}}
-  function storedSession(){try{var s=JSON.parse(sessionStorage.getItem(storageKey)||'null');return s&&s.endpoint===config.apiUrl&&/^[a-f0-9]{64}$/.test(s.token)&&s.expiresAt>Date.now()?s:null;}catch(_){return null;}}
+  function storeSession(value){
+    session=value;if(!value)authGeneration++;
+    try{if(value)localStorage.setItem(storageKey,JSON.stringify({...value,endpoint:config.apiUrl}));else localStorage.removeItem(storageKey);}catch(_){}
+    try{sessionStorage.removeItem(storageKey);}catch(_){}
+  }
+  function storedSession(){
+    var raw;try{raw=localStorage.getItem(storageKey);}catch(_){}
+    if(!raw)try{raw=sessionStorage.getItem(storageKey);}catch(_){}
+    try{var s=JSON.parse(raw||'null');return s&&s.endpoint===config.apiUrl&&/^[a-f0-9]{64}$/.test(s.token)&&Number.isFinite(s.expiresAt)?s:null;}catch(_){return null;}
+  }
+  window.addEventListener('storage',event=>{
+    if(event.key!==storageKey&&event.key!==null)return;
+    var s=storedSession();
+    if(session&&(!s||s.token!==session.token)){session=null;authGeneration++;location.reload();}
+    else if(s&&session)session=s;
+  });
   function random(){return Array.from(crypto.getRandomValues(new Uint8Array(32)),n=>n.toString(16).padStart(2,'0')).join('');}
   async function hash(s){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s))),n=>n.toString(16).padStart(2,'0')).join('');}
   function loadGoogle(){
@@ -26,7 +40,7 @@
       client=google.accounts.oauth2.initCodeClient({client_id:challenge.clientId,scope:'openid email',include_granted_scopes:false,ux_mode:'popup',state:challenge.state,select_account:true,
         callback:completeLogin,error_callback:()=>{button.disabled=false;status('ログイン画面を開けなかったか、閉じられました。もう一度お試しください。',true);}
       });
-      status('このタブでは最大12時間、ログインを保持します。');button.disabled=false;
+      status(challenge.sessionIdleDays===30?'このブラウザでは最終利用から30日間、ログインを保持します。':'このブラウザにログイン状態を保存します。');button.disabled=false;
     }catch(error){status(error.message,true);retry.hidden=false;}
   }
   async function completeLogin(response){
@@ -39,8 +53,16 @@
     }catch(error){storeSession(null);status(error.message,true);retry.hidden=false;}
   }
   async function authenticated(action,input){
-    if(!session||session.expiresAt<=Date.now()){storeSession(null);throw Error('ログイン期限が切れました。再読み込みしてログインしてください。未保存の内容は反映されていません。');}
-    try{return await rpc(action,input,session.token);}catch(error){if(error.code==='AUTH_REQUIRED')storeSession(null);throw error;}
+    if(!session)throw Error('ログインしてください。未保存の内容は反映されていません。');
+    var active=session,generation=authGeneration;
+    try{
+      // 他タブで期限が延びている場合もあるため、有効期限はGASの照合結果を採用する。
+      var data=await rpc(action,input,active.token);
+      if(generation!==authGeneration||!session||session.token!==active.token)throw Error('ログイン状態が変更されました。再読み込みしてください。');
+      if(data&&Number.isFinite(data.sessionExpiresAt)&&data.sessionExpiresAt>Date.now())storeSession({token:active.token,expiresAt:Math.max(session.expiresAt,data.sessionExpiresAt)});
+      else storeSession(session); // GAS更新前も既存の有効期限で利用可能。
+      return data;
+    }catch(error){if(error.code==='AUTH_REQUIRED'&&generation===authGeneration)storeSession(null);throw error;}
   }
   async function launch(){
     status('育成記録を読み込んでいます…');firstData=await authenticated('read');
@@ -59,12 +81,12 @@
     button.disabled=true;status('Googleのログイン画面でアカウントを選択してください。');
     try{client.requestCode();}catch(_){button.disabled=false;status('ログイン画面を開けませんでした。もう一度お試しください。',true);}
   };
-  retry.onclick=()=>prepare();
+  retry.onclick=()=>session?start():prepare();
   async function start(){
     if(!config.apiUrl){status('入力ツールは接続準備中です。');return;}
     try{rpc=EditorRPC.create(config.apiUrl);}catch(error){status(error.message,true);return;}
     session=storedSession();
-    if(session){try{await launch();return;}catch(error){storeSession(null);status(error.message,true);}}
+    if(session){try{await launch();return;}catch(error){status(error.message,true);if(session){retry.hidden=false;return;}}}
     await prepare();
   }
   start();

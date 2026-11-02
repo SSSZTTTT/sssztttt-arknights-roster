@@ -55,7 +55,7 @@ function editorPrepare_(input,config) {
     editorClean_(p,'ARK_EDITOR_CHALLENGE_',now,19);
     var state=editorRandom_(),expiresAt=now+300000;
     p.setProperty('ARK_EDITOR_CHALLENGE_'+editorHash_(state),JSON.stringify({binding:input.binding,createdAt:now,expiresAt:expiresAt,stamp:config.stamp}));
-    return {clientId:config.clientId,origin:config.origin,state:state,expiresAt:expiresAt};
+    return {clientId:config.clientId,origin:config.origin,state:state,expiresAt:expiresAt,sessionIdleDays:30};
   });
 }
 function editorIdentity_(token,config) {
@@ -90,7 +90,7 @@ function editorLogin_(input,config) {
   return editorLock_(p=>{
     var current=editorConfig_();if(current.stamp!==config.stamp)editorError_('LOGIN_FAILED','設定が変更されました。もう一度ログインしてください。');
     if(!current.sub){p.setProperty('OWNER_GOOGLE_SUB',identity.sub);current=editorConfig_();}
-    var now=Date.now(),token=editorRandom_(),expiresAt=now+12*3600000;
+    var now=Date.now(),token=editorRandom_(),expiresAt=now+30*86400000;
     editorClean_(p,'ARK_EDITOR_SESSION_',now,4);
     p.setProperty('ARK_EDITOR_SESSION_'+editorHash_(token),JSON.stringify({sub:identity.sub,stamp:current.stamp,createdAt:now,expiresAt:expiresAt}));
     return {token:token,expiresAt:expiresAt};
@@ -98,9 +98,14 @@ function editorLogin_(input,config) {
 }
 function editorRequireSession_(token,config) {
   if(!editorToken_(token))editorError_('AUTH_REQUIRED','ログインしてください。');
-  var session=editorJson_(PropertiesService.getScriptProperties().getProperty('ARK_EDITOR_SESSION_'+editorHash_(token)));
-  if(!session||session.expiresAt<=Date.now()||session.stamp!==config.stamp||session.sub!==config.sub)editorError_('AUTH_REQUIRED','ログイン期限が切れました。再読み込みしてログインしてください。未保存の内容は反映されていません。');
-  return session;
+  // 照合と延長を同じロック内で行い、ログアウト済みのセッションを復活させない。
+  return editorLock_(p=>{
+    var key='ARK_EDITOR_SESSION_'+editorHash_(token),session=editorJson_(p.getProperty(key)),now=Date.now(),current=editorConfig_();
+    if(!session||session.expiresAt<=now||session.stamp!==current.stamp||session.sub!==current.sub)editorError_('AUTH_REQUIRED','ログイン期限が切れました。再読み込みしてログインしてください。未保存の内容は反映されていません。');
+    session.expiresAt=now+30*86400000;
+    p.setProperty(key,JSON.stringify(session));
+    return session;
+  });
 }
 function editorDispatch_(envelope,config) {
   var input=envelope.input;
@@ -111,9 +116,9 @@ function editorDispatch_(envelope,config) {
     return {loggedOut:true};
   }
   if(!['read','save'].includes(envelope.action))editorError_('INVALID','未対応の操作です。');
-  editorRequireSession_(envelope.token,config);
-  if(envelope.action==='read')return webRoster_(true);
-  try{return webSaveTraining_(input);}catch(error){
+  var session=editorRequireSession_(envelope.token,config);
+  if(envelope.action==='read')return Object.assign(webRoster_(true),{sessionExpiresAt:session.expiresAt});
+  try{return Object.assign(webSaveTraining_(input),{sessionExpiresAt:session.expiresAt});}catch(error){
     // 保存処理の既知の入力・競合エラーだけを画面へ返す。
     var message=String(error.message||'');
     if(/別の画面|行が変更|数式|別の保存|オペレーターが見つかりません|同名の行|保存中に行/.test(message))editorError_('SAVE_REJECTED',message);
