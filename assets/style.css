@@ -146,7 +146,10 @@
 .initial-line:last-child{transform-origin:right center}
 .initial-label{margin:64px 20px 0;color:var(--muted);font-size:12px;letter-spacing:.08em;line-height:1.8}
 .initial.is-ready{opacity:0}.initial.is-ready .initial-track{animation:none}
-@keyframes initial-connect{to{transform:scaleX(1)}}
+@keyframes initial-connect{to{transform:scaleX(.85)}}
+@keyframes initial-finish{from{transform:scaleX(.85)}to{transform:scaleX(1)}}
+.initial.is-completing .initial-line{animation:initial-finish 240ms ease-out forwards!important}
+.initial.is-completing .initial-track{animation:none;opacity:1}
 @keyframes initial-breathe{from{opacity:1}to{opacity:.55}}
 /* 指定の線の接続は初回だけ表示。動作軽減時は点滅とフェードを省略する。 */
 @media(prefers-reduced-motion:reduce){.initial{transition:none}.initial-track{animation:none!important}.initial-line{animation:initial-connect 950ms cubic-bezier(.2,.65,.3,1) forwards!important}}

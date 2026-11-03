@@ -199,6 +199,9 @@
     var started=Number.isFinite(window.ARK_LOADING_STARTED)?window.ARK_LOADING_STARTED:initialStarted;
     var remaining=Math.max(0,950-(performance.now()-started));
     if(remaining)await new Promise(resolve=>setTimeout(resolve,remaining));
+    // この関数はデータ取得・形式確認の後だけ呼ばれる。完了時に残りの隙間を閉じる。
+    loader.classList.add('is-completing');
+    await new Promise(resolve=>setTimeout(resolve,260));
     if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
     loader.classList.add('is-ready');
     await new Promise(resolve=>setTimeout(resolve,180));
