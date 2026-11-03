@@ -10,3 +10,24 @@
 @media(max-width:760px){.wiki-import-button{height:33px;padding:4px 8px;font-size:12px}.import-dialog{max-width:none}.import-list li{grid-template-columns:minmax(0,1fr)}.import-list small{grid-column:auto}}
 
 @media(max-width:360px){.admin-shell .top-actions{gap:4px;right:14px}.admin-shell .top-actions .icon-button{width:30px}.wiki-import-button{padding:4px 6px}}
+
+/* スマホの編集は余白を圧縮し、入力文字と保存操作の大きさを確保する。 */
+@media(max-width:760px){
+ .editor-dialog .dialog-body{padding:12px 16px 10px}
+ .editor-dialog .dialog-top h2{font-size:19px;line-height:1.4}
+ .editor-dialog .dialog-sub{margin-top:0;line-height:1.5}
+ .editor-dialog .owned-switch{min-height:32px;margin:2px 0 4px}
+ .editor-dialog .edit-section-heading{min-height:30px;gap:6px}
+ .editor-dialog .edit-section-heading .text-button{min-height:32px;padding:4px 0;font-size:12px}
+ .editor-dialog .editor-grid{max-width:none;gap:8px;margin-top:4px}
+ .editor-dialog .field{min-width:0}
+ .editor-dialog .field label{font-size:12px;line-height:1.4;margin-bottom:4px}
+ .editor-dialog .field input,.editor-dialog .field select{min-width:0;min-height:40px;height:40px;padding:6px;font-size:16px}
+ .editor-dialog .edit-section{margin-top:10px;padding-top:8px}
+ .editor-dialog .edit-section .fields{margin-top:4px;gap:8px}
+ .editor-dialog .edit-section .fields.modules{gap:6px}
+ .editor-dialog .edit-section .fields.modules select{padding:6px 3px;font-size:16px}
+ .editor-dialog .dialog-message:empty{display:none}
+ .editor-dialog .editor-save{padding:8px 16px;gap:8px}
+ .editor-dialog .editor-save button{min-height:44px;padding:8px 10px}
+}
