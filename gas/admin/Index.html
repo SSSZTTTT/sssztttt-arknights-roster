@@ -233,6 +233,18 @@ html.modal-scroll-locked body{position:fixed;top:var(--modal-scroll-top);left:0;
 }
 @media(prefers-reduced-motion:reduce){.shell .main{transition:none}}
 .owned-confirm{max-width:430px;width:calc(100% - 28px);height:fit-content;max-height:calc(100dvh - 28px);margin:auto;border:1px solid var(--line);border-radius:16px}
+/* リクエスト確認：基本情報は一列、スキルは横幅を均等に使う。 */
+.request-body .detail-stats{margin:16px 0;gap:1px}
+.request-body .detail-stats>div{display:flex;align-items:baseline;justify-content:center;gap:7px;padding:9px 5px}
+.request-body .detail-stats small{font-size:12px;margin:0;white-space:nowrap}
+.request-body .detail-stats strong{font-size:18px;line-height:1.4}
+.request-body .detail-section>p{font-size:14px;margin:0 0 8px}
+.request-body .skill-pills{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.request-body .skill-pill{justify-content:center;gap:7px;min-width:0;padding:9px 4px;font-size:24px;line-height:1.3}
+.request-body .skill-pill b{font-size:14px}
+.request-body .skill-pill.unfilled{font-size:16px}
+.request-body .module-pills{gap:10px 22px;font-size:22px;line-height:1.4}
+.request-body .module-pill i{margin-right:0}
 .owned-confirm h2{margin:0 0 12px;font-size:20px}
 .owned-confirm .owned-name{font-size:17px;font-weight:600;margin:0 0 12px}
 .owned-confirm #owned-description{font-size:14px;line-height:1.8;color:var(--muted);margin:0 0 20px}
@@ -479,7 +491,7 @@ if(typeof module!=='undefined')module.exports=Ark;
       document.querySelectorAll('[data-job]').forEach(b=>b.onclick=()=>{filters.job=b.dataset.job;document.querySelectorAll('[data-job]').forEach(el=>{el.classList.toggle('active',el===b);el.setAttribute('aria-pressed',String(el===b));});renderRows();});renderRows();tick();
     }else if(view==='summary'){document.querySelectorAll('[data-summary]').forEach(b=>b.onclick=()=>{summaryRarity=b.dataset.summary;renderScreen();});renderSummary();}
   }
-  function skills(o,cls){return '<div class="skill-pills '+(cls||'')+'">'+o.skills.map((s,i)=>'<span class="skill-pill '+(s==='M3'?'complete':s==='-'?'absent':'')+'"><b>S'+(i+1)+'</b> '+(s==='-'?'—':s===''?'未入力':e(s))+'</span>').join('')+'</div>';}
+  function skills(o,cls){return '<div class="skill-pills '+(cls||'')+'">'+o.skills.map((s,i)=>'<span class="skill-pill '+(s==='M3'?'complete':s==='-'?'absent':s===''?'unfilled':'')+'"><b>S'+(i+1)+'</b> '+(s==='-'?'—':s===''?'未入力':e(s))+'</span>').join('')+'</div>';}
   function modules(o,cls){var list=o.modules.map((v,i)=>v&&v!=='-'&&v!=='0'?'<span class="module-pill"><i>'+Ark.modules[i]+'</i>'+e(v)+'</span>':'').join('');return '<div class="module-pills '+(cls||'')+'">'+(cls==='row-modules'?'<span class="module-heading">Mod</span>':'')+(list||'<span class="muted">—</span>')+'</div>';}
   function operatorRow(o){
     var opening=admin?'<button class="oprow" data-edit-name="'+e(o.name)+'" aria-label="'+e(o.name)+' 育成を編集">':'<article class="oprow public-oprow" aria-label="'+e(o.name)+'">';
@@ -530,7 +542,7 @@ if(typeof module!=='undefined')module.exports=Ark;
   function hideDialog(el){el.close();restoreModalScroll();}
   function openOperator(o){selected=o;dirty=false;saving=false;dialog.classList.toggle('editor-dialog',admin);if(admin){draft={...o.training};renderEditor();}else renderRequest();showDialog(dialog);}
   function dialogHeader(eyebrow){var title='<h2 id="dialog-title">'+e(selected.name)+'</h2>';return '<div class="dialog-top">'+(admin?title:'<p class="eyebrow">'+eyebrow+'</p>')+'<button class="icon-button" data-close aria-label="閉じる">'+icon('close')+'</button></div>'+(admin?'':title)+'<p class="dialog-sub">★'+selected.rarity+' · '+e(selected.job)+(admin?'':' · '+(selected.owned?'所持済み':'未所持'))+'</p>';}
-  function renderRequest(){dialog.innerHTML='<div class="dialog-body">'+dialogHeader('SUPPORT REQUEST')+'<div class="detail-stats"><div><small>昇進</small><strong>'+n(selected.elite)+'</strong></div><div><small>レベル</small><strong>'+n(selected.level)+'</strong></div><div><small>潜在</small><strong>'+n(selected.potential)+'</strong></div></div><div class="detail-section"><p>スキル特化</p>'+skills(selected)+'</div><div class="detail-section"><p>モジュール</p>'+modules(selected)+'</div><p class="dialog-notice">このオペレーターをリクエストしますか？<br>送信ボタンを押すとDiscordに通知します。連続したリクエストは3分間のCTがあります。</p><div class="dialog-actions"><button class="primary" id="send-request">'+icon('send')+'リクエスト送信</button><button class="secondary" data-close>キャンセル</button></div><p class="dialog-message" id="dialog-message" role="status"></p></div>';bindClose();document.getElementById('send-request').onclick=sendRequest;tick();}
+  function renderRequest(){dialog.innerHTML='<div class="dialog-body request-body">'+dialogHeader('SUPPORT REQUEST')+'<div class="detail-stats"><div><small>昇進</small><strong>'+n(selected.elite)+'</strong></div><div><small>レベル</small><strong>'+n(selected.level)+'</strong></div><div><small>潜在</small><strong>'+n(selected.potential)+'</strong></div></div><div class="detail-section"><p>スキル</p>'+skills(selected)+'</div><div class="detail-section"><p>モジュール</p>'+modules(selected)+'</div><p class="dialog-notice">このオペレーターをリクエストしますか？<br>送信ボタンを押すとDiscordに通知します。連続したリクエストは3分間のCTがあります。</p><div class="dialog-actions"><button class="primary" id="send-request">'+icon('send')+'リクエスト送信</button><button class="secondary" data-close>キャンセル</button></div><p class="dialog-message" id="dialog-message" role="status"></p></div>';bindClose();document.getElementById('send-request').onclick=sendRequest;tick();}
   async function sendRequest(){if(saving||remainingUntil>Date.now())return;saving=true;var b=document.getElementById('send-request'),m=document.getElementById('dialog-message');b.disabled=true;b.innerHTML='<span class="spinner"></span>送信結果を確認中…';m.textContent='この画面を開いたままお待ちください。';try{var result=await T.request(selected.name);if(result.retryAt)setCooldown(result.retryAt);if(result.status==='sent'){m.textContent=T.demo?'プレビュー：実際の通知は送信していません。':'Discordにリクエストを送信しました。';b.textContent='送信しました';if(!T.demo)data.history.unshift({name:selected.name,time:new Date().toISOString()});}else{m.classList.add('error');m.textContent=result.message||'送信できませんでした。時間をおいてお試しください。';if(result.status==='uncertain')setCooldown(Math.max(remainingUntil,Date.now()+180000));b.textContent='リクエスト送信';}}catch(err){m.classList.add('error');m.textContent=err.message;setCooldown(Date.now()+180000);b.textContent='送信結果を確認できません';}finally{saving=false;tick();}}
   function bindClose(){dialog.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeDialog);}
   function closeDialog(){if(saving)return;if(dirty&&!window.confirm('保存していない変更を破棄しますか？'))return;hideDialog(dialog);dirty=false;selected=null;}
