@@ -22,13 +22,13 @@ function editorHash_(value) {
 }
 function editorRandom_() {return (Utilities.getUuid()+Utilities.getUuid()).replace(/-/g,'').toLowerCase();}
 function editorConfig_() {
-  var p=PropertiesService.getScriptProperties(),c={
-    clientId:(p.getProperty('OAUTH_CLIENT_ID')||'').trim(),secret:(p.getProperty('OAUTH_CLIENT_SECRET')||'').trim(),
-    owner:(p.getProperty('OWNER_EMAIL')||'').trim().toLowerCase(),sub:(p.getProperty('OWNER_GOOGLE_SUB')||'').trim(),
-    origin:(p.getProperty('EDITOR_ORIGIN')||'').trim()
+  var properties=PropertiesService.getScriptProperties().getProperties(),c={
+    clientId:(properties.OAUTH_CLIENT_ID||'').trim(),secret:(properties.OAUTH_CLIENT_SECRET||'').trim(),
+    owner:(properties.OWNER_EMAIL||'').trim().toLowerCase(),sub:(properties.OWNER_GOOGLE_SUB||'').trim(),
+    origin:(properties.EDITOR_ORIGIN||'').trim()
   };
   if(!/^[a-zA-Z0-9_-]+\.apps\.googleusercontent\.com$/.test(c.clientId)||!c.secret||!c.owner.includes('@')||!/^https:\/\/[a-z0-9-]+\.github\.io$/.test(c.origin))throw Error('Editor settings missing');
-  c.stamp=editorHash_([c.clientId,c.secret,c.owner,c.origin,c.sub,p.getProperty('SESSION_VERSION')||'1'].join('\n'));
+  c.stamp=editorHash_([c.clientId,c.secret,c.owner,c.origin,c.sub,properties.SESSION_VERSION||'1'].join('\n'));
   return c;
 }
 function editorLock_(fn) {

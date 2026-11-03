@@ -53,6 +53,33 @@ test('public and private responses retain absent potential and editing another f
   assert.deepEqual(f.writes.map(w=>w.c),[9]);
   f.row[6]='';assert.equal(f.ctx.webRoster_(false).operators[0].potential,null);
 });
+test('private rows are parsed once while preserving normalized training values and existing revision hashes',()=>{
+  const f=fixture('Admin');f.row[7]='ｍ３';f.row[8]='2';f.row[9]='-';f.row[10]=null;f.row[12]=undefined;f.row[14]='TRUE';
+  let parses=0;const original=f.ctx.Ark.fromRow;f.ctx.Ark.fromRow=(...args)=>{parses++;return original(...args);};
+  const op=f.ctx.webOperator_(f.row,headers,true);
+  const training={owned:true,elite:2,level:90,potential:18,s1:'M3',s2:'M2',s3:'-',x:'',y:'-',delta:'',alpha:'-'};
+  assert.equal(parses,1);assert.deepEqual(JSON.parse(JSON.stringify(op.training)),training);
+  assert.equal(op.version,crypto.createHash('sha256').update(JSON.stringify(['ア',training])).digest('hex'));
+  const {training:privateTraining,version,...visible}=JSON.parse(JSON.stringify(op));
+  assert.deepEqual(visible,JSON.parse(JSON.stringify(f.ctx.webOperator_(f.row,headers,false))));
+});
+
+test('roster and operator lookup read each sheet boundary once and retain history order and empty-sheet handling',()=>{
+  const f=fixture('Admin'),calls={year:0,empty:0,history:0};
+  f.sheet.getLastRow=()=>{calls.year++;return 2;};
+  const empty={getName:()=> '2021年',getLastRow(){calls.empty++;return 1;},getRange(){throw Error('empty sheet must not be read');}};
+  const unrelated={getName:()=> '集計',getLastRow(){throw Error('summary must not be read');}};
+  f.ss.getSheets=()=>[f.sheet,empty,unrelated];
+  f.ss.getSheetByName=()=>({getLastRow(){calls.history++;return 3;},getRange(r,c,h,w){assert.deepEqual([r,c,h,w],[2,1,2,2]);return {getValues:()=>[['2026-01-01','ア'],['2026-02-01','イ']]};}});
+  const roster=f.ctx.webRoster_(true);
+  assert.equal(roster.operators.length,1);assert.deepEqual(JSON.parse(JSON.stringify(roster.history)),[{time:'2026-02-01',name:'イ'},{time:'2026-01-01',name:'ア'}]);
+  assert.deepEqual(calls,{year:1,empty:1,history:1});
+  const found=f.ctx.webFindOperator_(f.ss,'ア');assert.equal(found.sheet,f.sheet);assert.equal(found.row,2);
+  assert.deepEqual(calls,{year:2,empty:2,history:1});
+  f.ss.getSheetByName=()=>null;assert.equal(f.ctx.webHistory_(f.ss).length,0);
+  f.ss.getSheetByName=()=>({getLastRow:()=>1,getRange(){throw Error('empty history must not be read');}});assert.equal(f.ctx.webHistory_(f.ss).length,0);
+});
+
 test('support sends once, disables mentions, writes history only after Discord success',()=>{
   const f=fixture();assert.equal(f.ctx.receiveSupport_(input()).status,'sent');
   assert.equal(f.ctx.receiveSupport_(input()).status,'sent');

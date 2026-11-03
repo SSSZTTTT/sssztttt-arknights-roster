@@ -1,17 +1,32 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),crypto=require('node:crypto');
 function fixture(){
-  let now=1900000000000,reads=0,writes=0;const calls=[];
+  let now=1900000000000,reads=0,writes=0;const calls=[],propertyCalls={get:[],snapshots:0};
   const props=new Map([['OAUTH_CLIENT_ID','test-client.apps.googleusercontent.com'],['OAUTH_CLIENT_SECRET','test-secret'],['OWNER_EMAIL','owner@example.test'],['EDITOR_ORIGIN','https://owner.github.io']]);
-  const p={getProperty:k=>props.get(k)||null,setProperty:(k,v)=>props.set(k,v),deleteProperty:k=>props.delete(k),getProperties:()=>Object.fromEntries(props)};
+  const p={getProperty(k){propertyCalls.get.push(k);return props.get(k)||null;},setProperty:(k,v)=>props.set(k,v),deleteProperty:k=>props.delete(k),getProperties(){propertyCalls.snapshots++;return Object.fromEntries(props);}};
   const c=vm.createContext({console,Date:{now:()=>now},PropertiesService:{getScriptProperties:()=>p},LockService:{getScriptLock:()=>({tryLock:()=>!c.busy,releaseLock(){}})},Utilities:{getUuid:()=>crypto.randomUUID(),DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},computeDigest:(_,s)=>[...crypto.createHash('sha256').update(s).digest()],base64DecodeWebSafe:s=>Buffer.from(s,'base64url'),newBlob:b=>({getDataAsString:()=>Buffer.from(b).toString('utf8')})},webRoster_:()=>{reads++;return {operators:[],history:[]};},webSaveTraining_:input=>{writes++;return input;},ContentService:{createTextOutput:text=>({text})},HtmlService:{XFrameOptionsMode:{ALLOWALL:'all'},createHtmlOutput:text=>({text,setXFrameOptionsMode(value){this.mode=value;return this;}})},UrlFetchApp:{fetch(url,options){calls.push({url,options});if(c.networkError)throw Error('secret error');return {getResponseCode:()=>c.http,getContentText:()=>JSON.stringify({id_token:'header.'+Buffer.from(JSON.stringify(c.claims)).toString('base64url')+'.signature',access_token:'DO_NOT_RETURN',refresh_token:'DO_NOT_STORE'})};}}});
   c.http=200;c.claims={iss:'https://accounts.google.com',aud:'test-client.apps.googleusercontent.com',sub:'google-user-123',email:'owner@example.test',email_verified:true,iat:Math.floor(now/1000),exp:Math.floor(now/1000)+3600};
   vm.runInContext(fs.readFileSync('backend/EditorApi.gs','utf8'),c);
   function prepare(){const secret='b'.repeat(64),r=c.editorPrepare_({binding:c.editorHash_(secret)},c.editorConfig_());return {...r,bindingSecret:secret,code:'one-use-google-code'};}
   function login(){return c.editorLogin_(prepare(),c.editorConfig_());}
   function request(action,input={},token=''){return c.doPost({parameter:{payload:JSON.stringify({nonce:'a'.repeat(64),action,input,token})}});}
-  return {c,props,calls,prepare,login,request,advance:ms=>now+=ms,get reads(){return reads;},get writes(){return writes;}};
+  return {c,props,calls,propertyCalls,prepare,login,request,advance:ms=>now+=ms,get reads(){return reads;},get writes(){return writes;}};
 }
+test('configuration keeps its invalidation stamp while reading settings in one service call',()=>{
+  const f=fixture();f.props.set('OWNER_EMAIL',' OWNER@example.test ');f.props.set('OWNER_GOOGLE_SUB',' google-user-123 ');
+  f.props.set('SESSION_VERSION','2');f.props.set('UNRELATED_SETTING','ignored');
+  const config=f.c.editorConfig_();
+  const expected=crypto.createHash('sha256').update(['test-client.apps.googleusercontent.com','test-secret','owner@example.test','https://owner.github.io','google-user-123','2'].join('\n')).digest('hex');
+  assert.equal(config.stamp,expected);assert.equal(config.owner,'owner@example.test');assert.equal(config.sub,'google-user-123');
+  assert.equal(f.propertyCalls.snapshots,1);assert.deepEqual(f.propertyCalls.get,[]);
+  assert.equal(Object.hasOwn(config,'UNRELATED_SETTING'),false);
+});
+test('session resume reads settings twice for fresh lock validation without per-setting lookups',()=>{
+  const f=fixture(),s=f.login();f.propertyCalls.get.length=0;f.propertyCalls.snapshots=0;
+  assert.match(f.request('read',{},s.token).text,/"ok":true/);
+  assert.equal(f.reads,1);assert.equal(f.propertyCalls.snapshots,2);
+  assert.deepEqual(f.propertyCalls.get,['ARK_EDITOR_SESSION_'+f.c.editorHash_(s.token)]);
+});
 test('editor rejects unauthenticated reads and writes before accessing the sheet',()=>{
   const f=fixture();for(const action of ['read','save']){
     const r=f.request(action,{name:'ア'});assert.match(r.text,/AUTH_REQUIRED/);assert.equal(r.mode,'all');
