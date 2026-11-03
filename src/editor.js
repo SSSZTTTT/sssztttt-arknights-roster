@@ -71,6 +71,8 @@
     window.ArkTransport={admin:true,demo:false,storage:{get:()=>null,set:()=>{}},
       get:async()=>{if(firstData){var d=firstData;firstData=null;return d;}return authenticated('read');},
       save:(op,values)=>authenticated('save',{name:op.name,version:op.version,values:values}),
+      importPreview:()=>authenticated('importPreview'),
+      importCommit:planId=>authenticated('importCommit',{planId:planId}),
       logout:async()=>{if(session)await rpc('logout',{},session.token);storeSession(null);app.replaceChildren();location.reload();}
     };
     if(!launched){launched=true;var script=document.createElement('script');script.src=document.getElementById('editor-bootstrap').dataset.applicationSrc;script.onerror=()=>{auth.hidden=false;app.hidden=true;status('入力画面を読み込めませんでした。再読み込みしてください。',true);};document.head.append(script);}

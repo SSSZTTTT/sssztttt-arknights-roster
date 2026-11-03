@@ -13,6 +13,7 @@ for(const project of ['public','admin','editor']){
   write('gas/'+project+'/Core.gs',read('backend/Core.gs'));
   write('gas/'+project+'/Model.gs',read('src/model.js'));
   if(project!=='public')write('gas/'+project+'/Training.gs',read('backend/Training.gs'));
+  if(project==='editor')for(const file of ['OperatorImport.gs','ImportApi.gs'])write('gas/editor/'+file,read('backend/'+file));
   write('gas/'+project+'/Code.gs',read('backend/'+({public:'PublicApi',admin:'Admin',editor:'EditorApi'}[project])+'.gs'));
   const manifest={timeZone:'Asia/Tokyo',runtimeVersion:'V8',exceptionLogging:'STACKDRIVER',oauthScopes:project!=='admin'?['https://www.googleapis.com/auth/spreadsheets','https://www.googleapis.com/auth/script.external_request']:['https://www.googleapis.com/auth/spreadsheets']};
   if(project==='admin')manifest.webapp={access:'MYSELF',executeAs:'USER_DEPLOYING'};

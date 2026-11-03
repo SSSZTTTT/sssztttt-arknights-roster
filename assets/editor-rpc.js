@@ -31,7 +31,7 @@
           if(result.ok)finish(null,result.data);
           else {var error=Error(result.error&&result.error.message||'処理に失敗しました。');error.code=result.error&&result.error.code;finish(error);}
         }
-        var timer=env.setTimeout(()=>{var error=Error(action==='save'?'保存結果を確認できませんでした。自動再送はしません。一覧を更新して保存状態を確認してください。':'入力用GASからの応答を確認できませんでした。接続先とデプロイ設定を確認してください。');error.code='TIMEOUT';finish(error);},60000);
+        var timer=env.setTimeout(()=>{var error=Error((action==='save'||action==='importCommit')?'保存結果を確認できませんでした。自動再送はしません。一覧を更新して保存状態を確認してください。':'入力用GASからの応答を確認できませんでした。接続先とデプロイ設定を確認してください。');error.code='TIMEOUT';finish(error);},60000);
         env.addEventListener('message',receive);doc.body.append(frame,form);
         try{form.submit();field.value='';form.remove();}catch(_){finish(Error('通信を開始できませんでした。'));}
       });

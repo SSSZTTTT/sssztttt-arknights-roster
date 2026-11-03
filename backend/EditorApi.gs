@@ -115,8 +115,10 @@ function editorDispatch_(envelope,config) {
     if(editorToken_(envelope.token))editorLock_(p=>p.deleteProperty('ARK_EDITOR_SESSION_'+editorHash_(envelope.token)));
     return {loggedOut:true};
   }
-  if(!['read','save'].includes(envelope.action))editorError_('INVALID','未対応の操作です。');
+  if(!['read','save','importPreview','importCommit'].includes(envelope.action))editorError_('INVALID','未対応の操作です。');
   var session=editorRequireSession_(envelope.token,config);
+  if(envelope.action==='importPreview')return Object.assign(editorImportPreview_(envelope.token),{sessionExpiresAt:session.expiresAt});
+  if(envelope.action==='importCommit')return Object.assign(editorImportCommit_(input,envelope.token),{sessionExpiresAt:session.expiresAt});
   if(envelope.action==='read')return Object.assign(webRoster_(true),{sessionExpiresAt:session.expiresAt});
   try{return Object.assign(webSaveTraining_(input),{sessionExpiresAt:session.expiresAt});}catch(error){
     // 保存処理の既知の入力・競合エラーだけを画面へ返す。
