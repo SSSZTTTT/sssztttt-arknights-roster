@@ -67,7 +67,7 @@
   }
   function validRoster(data){return data&&Array.isArray(data.operators)&&Array.isArray(data.history);}
   async function launch(roster){
-    status('育成記録を読み込んでいます…');
+    status('Loading');
     firstData=validRoster(roster)?roster:await authenticated('read');
     if(!validRoster(firstData))throw Error('取得データの形式が一致しません。');
     window.ARK_ADMIN=true;
