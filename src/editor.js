@@ -35,7 +35,7 @@
     button.disabled=true;retry.hidden=true;status('ログインを準備しています…');
     try {
       bindingSecret=random();
-      var results=await Promise.all([rpc('prepare',{binding:await hash(bindingSecret)}),loadGoogle()]);challenge=results[0];
+      var results=await Promise.all([hash(bindingSecret).then(binding=>rpc('prepare',{binding:binding})),loadGoogle()]);challenge=results[0];
       if(challenge.origin!==location.origin||!challenge.clientId||!/^[a-f0-9]{64}$/.test(challenge.state))throw Error('入力ツールの接続設定が一致しません。');
       client=google.accounts.oauth2.initCodeClient({client_id:challenge.clientId,scope:'openid email',include_granted_scopes:false,ux_mode:'popup',state:challenge.state,select_account:true,
         callback:completeLogin,error_callback:()=>{button.disabled=false;status('ログイン画面を開けなかったか、閉じられました。もう一度お試しください。',true);}
@@ -47,10 +47,11 @@
     button.disabled=true;status('アカウントを確認しています…');
     try {
       if(response.error||response.state!==challenge.state||!response.code)throw Error('ログインを完了できませんでした。もう一度お試しください。');
-      var s=await rpc('login',{state:challenge.state,bindingSecret:bindingSecret,code:response.code});
+      var s=await rpc('login',{state:challenge.state,bindingSecret:bindingSecret,code:response.code,includeRoster:true});
       if(!s||!/^[a-f0-9]{64}$/.test(s.token)||!Number.isFinite(s.expiresAt)||s.expiresAt<=Date.now())throw Error('ログイン結果を確認できませんでした。');
-      storeSession(s);await launch();
-    }catch(error){storeSession(null);status(error.message,true);retry.hidden=false;}
+      storeSession({token:s.token,expiresAt:s.expiresAt});
+      await launch(s.roster);
+    }catch(error){status(error.message,true);retry.hidden=false;}
   }
   async function authenticated(action,input){
     if(!session)throw Error('ログインしてください。未保存の内容は反映されていません。');
@@ -64,9 +65,11 @@
       return data;
     }catch(error){if(error.code==='AUTH_REQUIRED'&&generation===authGeneration)storeSession(null);throw error;}
   }
-  async function launch(){
-    status('育成記録を読み込んでいます…');firstData=await authenticated('read');
-    if(!firstData||!Array.isArray(firstData.operators)||!Array.isArray(firstData.history))throw Error('取得データの形式が一致しません。');
+  function validRoster(data){return data&&Array.isArray(data.operators)&&Array.isArray(data.history);}
+  async function launch(roster){
+    status('育成記録を読み込んでいます…');
+    firstData=validRoster(roster)?roster:await authenticated('read');
+    if(!validRoster(firstData))throw Error('取得データの形式が一致しません。');
     window.ARK_ADMIN=true;
     window.ArkTransport={admin:true,demo:false,storage:{get:()=>null,set:()=>{}},
       get:async()=>{if(firstData){var d=firstData;firstData=null;return d;}return authenticated('read');},

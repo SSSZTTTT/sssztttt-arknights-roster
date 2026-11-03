@@ -26,6 +26,19 @@ test('Google code exchange accepts only owner and stores hashed expiring session
   assert.match(f.request('read',{},s.token).text,/"ok":true/);assert.equal(f.reads,1);
   assert.match(f.request('save',{name:'ア'},s.token).text,/"ok":true/);assert.equal(f.writes,1);
 });
+test('login bundles the roster only after owner verification and preserves the session if the roster is unavailable',()=>{
+  const f=fixture();
+  const success=f.request('login',{...f.prepare(),includeRoster:true});
+  assert.match(success.text,/"roster":\{"operators":\[\],"history":\[\]\}/);assert.equal(f.reads,1);
+  const g=fixture();g.c.claims.email='other@example.test';
+  assert.match(g.request('login',{...g.prepare(),includeRoster:true}).text,/FORBIDDEN/);assert.equal(g.reads,0);
+  const h=fixture();h.c.webRoster_=()=>{throw Error('private error');};
+  const fallback=h.request('login',{...h.prepare(),includeRoster:true});
+  const token=fallback.text.match(/"token":"([a-f0-9]{64})"/)[1];
+  assert.doesNotMatch(fallback.text,/"roster"|private error/);
+  h.c.webRoster_=()=>({operators:[],history:[]});
+  assert.match(h.request('read',{},token).text,/"ok":true/);
+});
 test('wrong account, unverified email, wrong audience, issuer, azp, expiration and subject are rejected',()=>{
   const changes=[{email:'other@example.test'},{email_verified:false},{aud:'other-client'},{iss:'https://attacker.example.test'},{azp:'other-client'},{exp:1},{iat:9999999999},{sub:''}];
   for(const change of changes){const f=fixture();Object.assign(f.c.claims,change);assert.throws(()=>f.login());assert.equal([...f.props.keys()].some(k=>k.startsWith('ARK_EDITOR_SESSION_')),false);assert.equal(f.reads,0);assert.equal(f.writes,0);}

@@ -110,7 +110,14 @@ function editorRequireSession_(token,config) {
 function editorDispatch_(envelope,config) {
   var input=envelope.input;
   if(envelope.action==='prepare')return editorPrepare_(input,config);
-  if(envelope.action==='login')return editorLogin_(input,config);
+  if(envelope.action==='login'){
+    var login=editorLogin_(input,config);
+    if(input.includeRoster===true){
+      // セッション発行後にシートを読み、読み込みに失敗してもログイン結果は返す。
+      try{login.roster=webRoster_(true);}catch(_){}
+    }
+    return login;
+  }
   if(envelope.action==='logout') {
     if(editorToken_(envelope.token))editorLock_(p=>p.deleteProperty('ARK_EDITOR_SESSION_'+editorHash_(envelope.token)));
     return {loggedOut:true};

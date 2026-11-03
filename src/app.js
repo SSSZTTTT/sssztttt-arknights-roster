@@ -8,7 +8,8 @@
   function percent(a,b){return b?(a/b*100).toFixed(1)+'%':'—';}
   function stamp(date){if(!date)return '—';var d=new Date(date);return Number.isNaN(+d)?e(date):new Intl.DateTimeFormat('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'}).format(d);}
   function toast(message){var el=document.getElementById('toast');el.textContent=message;el.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.hidden=true,4000);}
-  var headerObserver,menuDialog=null,importDialog=null,importPlan=null,importBusy=false;
+  var menuMedia=window.matchMedia('(min-width:761px)'),menuAnimation=null,menuVersion=0,menuWanted=false;
+  var headerObserver,menuDialog=null,ownedDialog=null,importDialog=null,importPlan=null,importBusy=false;
   function observeHeader(){
     if(headerObserver)headerObserver.disconnect();
     var header=document.querySelector('.site-header');
@@ -20,24 +21,54 @@
     measure();headerObserver=new ResizeObserver(measure);headerObserver.observe(header);
   }
   function shell(){
+    menuVersion++;if(menuAnimation)menuAnimation.cancel();menuAnimation=null;menuWanted=false;
+    root.querySelectorAll('dialog[open]').forEach(el=>el.close());restoreModalScroll();
     var menuItems=[['roster',admin?'育成を記録':'オペレーター','list'],['summary','統計','chart'],['history','リクエスト履歴','clock']];
-    root.innerHTML='<div class="shell'+(admin?' admin-shell':'')+'"><header class="site-header"><div class="brand"><button class="icon-button menu-toggle" id="open-menu" aria-label="メニューを開く" aria-controls="navigation-dialog" aria-haspopup="dialog" aria-expanded="false">'+icon('menu')+'</button><div><div class="brand-name">OPERATOR</div><div class="brand-sub">ROSTER</div></div></div><div class="top-actions">'+(admin&&T.importPreview?'<button class="text-button wiki-import-button" id="wiki-import" title="Wikiから新規オペレーターを取得" aria-label="Wikiから新規オペレーターを取得">取得</button>':'')+(T.logout?'<button class="icon-button" id="logout" aria-label="ログアウト" title="ログアウト">'+icon('lock')+'</button>':'')+'<button class="icon-button" id="toggle-search" aria-label="検索" aria-controls="search-panel" aria-expanded="false">'+icon('search')+'</button><button class="icon-button" id="refresh" aria-label="最新の記録に更新">'+icon('refresh')+'</button></div></header><main class="main" id="main"><div id="screen"></div></main></div><dialog class="dialog nav-dialog" id="navigation-dialog" aria-labelledby="navigation-title"><div class="nav-dialog-heading"><h2 id="navigation-title">メニュー</h2><button class="icon-button" id="close-menu" aria-label="メニューを閉じる">'+icon('close')+'</button></div><nav class="navigation" aria-label="メインメニュー">'+menuItems.map(([key,label,ic])=>'<button class="nav-item" data-view="'+key+'" '+(key===view?'aria-current="page"':'')+'>'+icon(ic)+label+'</button>').join('')+'</nav><p class="nav-dialog-foot">非公式の個人記録サイト</p></dialog><dialog class="dialog" id="detail-dialog" aria-labelledby="dialog-title"></dialog><dialog class="dialog import-dialog" id="import-dialog" aria-labelledby="import-title"></dialog><div class="toast" id="toast" role="status" hidden></div>';
+    root.innerHTML='<div class="shell'+(admin?' admin-shell':'')+'"><header class="site-header"><div class="brand"><button class="icon-button menu-toggle" id="open-menu" aria-label="メニューを開く" aria-controls="navigation-dialog" aria-haspopup="dialog" aria-expanded="false">'+icon('menu')+'</button><div><div class="brand-name">OPERATOR</div><div class="brand-sub">ROSTER</div></div></div><div class="top-actions">'+(admin&&T.importPreview?'<button class="text-button wiki-import-button" id="wiki-import" title="Wikiから新規オペレーターを取得" aria-label="Wikiから新規オペレーターを取得">取得</button>':'')+(T.logout?'<button class="icon-button" id="logout" aria-label="ログアウト" title="ログアウト">'+icon('lock')+'</button>':'')+'<button class="icon-button" id="toggle-search" aria-label="検索" aria-controls="search-panel" aria-expanded="false">'+icon('search')+'</button><button class="icon-button" id="refresh" aria-label="最新の記録に更新">'+icon('refresh')+'</button></div></header><main class="main" id="main"><div id="screen"></div></main></div><dialog class="dialog nav-dialog" id="navigation-dialog" aria-labelledby="navigation-title"><div class="nav-dialog-heading"><h2 id="navigation-title">メニュー</h2><button class="icon-button" id="close-menu" aria-label="メニューを閉じる">'+icon('close')+'</button></div><nav class="navigation" aria-label="メインメニュー">'+menuItems.map(([key,label,ic])=>'<button class="nav-item" data-view="'+key+'" '+(key===view?'aria-current="page"':'')+'>'+icon(ic)+label+'</button>').join('')+'</nav><p class="nav-dialog-foot">非公式の個人記録サイト</p></dialog><dialog class="dialog" id="detail-dialog" aria-labelledby="dialog-title"></dialog><dialog class="dialog owned-confirm" id="owned-confirm" role="alertdialog" aria-labelledby="owned-title" aria-describedby="owned-description"><div class="dialog-body"><h2 id="owned-title">未所持に変更しますか？</h2><p class="owned-name" id="owned-name"></p><p id="owned-description">一度入手したオペレーターは通常手放せません。記録の訂正の場合のみ変更してください。<br>変更は「保存」で反映されます。</p><div class="dialog-actions"><button class="secondary" id="owned-cancel" autofocus>キャンセル</button><button class="primary" id="owned-accept">未所持に変更</button></div></div></dialog><dialog class="dialog import-dialog" id="import-dialog" aria-labelledby="import-title"></dialog><div class="toast" id="toast" role="status" hidden></div>';
     menuDialog=document.getElementById('navigation-dialog');
-    document.getElementById('open-menu').onclick=()=>{showDialog(menuDialog);document.getElementById('open-menu').setAttribute('aria-expanded','true');};
+    document.getElementById('open-menu').onclick=()=>menuWanted?closeMenu():openMenu();
     document.getElementById('close-menu').onclick=closeMenu;
     menuDialog.addEventListener('cancel',ev=>{ev.preventDefault();closeMenu();});
     menuDialog.addEventListener('click',ev=>{if(ev.target===menuDialog){var r=menuDialog.getBoundingClientRect();if(ev.clientX<r.left||ev.clientX>r.right||ev.clientY<r.top||ev.clientY>r.bottom)closeMenu();}});
-    menuDialog.addEventListener('close',()=>{document.getElementById('open-menu').setAttribute('aria-expanded','false');restoreModalScroll();});
+    menuDialog.addEventListener('close',()=>{if(menuDialog.open)return;setMenuState(false);restoreModalScroll();});
     var logout=document.getElementById('logout');if(logout)logout.onclick=async()=>{if(dirty||saving){toast('編集中の変更を保存またはキャンセルしてからログアウトしてください。');return;}logout.disabled=true;try{await T.logout();}catch(error){toast(error.message);logout.disabled=false;}};
     var importButton=document.getElementById('wiki-import');if(importButton)importButton.onclick=openImport;
     observeHeader();dialog=document.getElementById('detail-dialog');
+    ownedDialog=document.getElementById('owned-confirm');
+    document.getElementById('owned-cancel').onclick=()=>finishOwnedChange(false);
+    document.getElementById('owned-accept').onclick=()=>finishOwnedChange(true);
+    ownedDialog.addEventListener('cancel',ev=>{ev.preventDefault();finishOwnedChange(false);});
+    ownedDialog.addEventListener('close',restoreModalScroll);
     importDialog=document.getElementById('import-dialog');importDialog.addEventListener('cancel',ev=>{ev.preventDefault();closeImport();});importDialog.addEventListener('click',ev=>{if(ev.target===importDialog)closeImport();});
     dialog.addEventListener('close',restoreModalScroll);importDialog.addEventListener('close',restoreModalScroll);
     dialog.addEventListener('cancel',ev=>{ev.preventDefault();closeDialog();});dialog.addEventListener('click',ev=>{if(ev.target===dialog)closeDialog();});
-    document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{closeMenu();view=b.dataset.view;document.querySelectorAll('[data-view]').forEach(el=>{if(el===b)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});renderScreen();window.scrollTo({top:0});});
+    document.querySelectorAll('[data-view]').forEach(b=>b.onclick=async()=>{if(!menuMedia.matches)await closeMenu();view=b.dataset.view;document.querySelectorAll('[data-view]').forEach(el=>{if(el===b)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});renderScreen();window.scrollTo({top:0});});
     document.getElementById('refresh').onclick=()=>load(true);document.getElementById('toggle-search').onclick=()=>setSearchOpen(!searchOpen);renderScreen();
   }
-  function closeMenu(){hideDialog(menuDialog);document.getElementById('open-menu').setAttribute('aria-expanded','false');}
+  function setMenuState(open){
+    menuWanted=open;
+    var button=document.getElementById('open-menu');
+    button.setAttribute('aria-expanded',String(open));button.setAttribute('aria-label',open?'メニューを閉じる':'メニューを開く');
+    document.querySelector('.shell').classList.toggle('menu-docked',open&&menuMedia.matches);
+  }
+  function menuMotion(from,to,duration){
+    if(window.matchMedia('(prefers-reduced-motion:reduce)').matches)return null;
+    return menuDialog.animate([{transform:from},{transform:to}],{duration:duration,easing:'cubic-bezier(.2,.7,.2,1)'});
+  }
+  function openMenu(options){
+    menuVersion++;if(menuAnimation)menuAnimation.cancel();
+    if(!menuDialog.open){if(menuMedia.matches)menuDialog.show();else showDialog(menuDialog);}
+    setMenuState(true);
+    menuAnimation=options&&options.animate===false?null:menuMotion('translateX(-100%)','translateX(0)',240);
+  }
+  async function closeMenu(options){
+    if(!menuDialog||!menuDialog.open)return;
+    var version=++menuVersion;if(menuAnimation)menuAnimation.cancel();setMenuState(false);
+    menuAnimation=options&&options.animate===false?null:menuMotion('translateX(0)','translateX(-100%)',180);
+    if(menuAnimation){try{await menuAnimation.finished;}catch(_){return;}}
+    if(version!==menuVersion)return;menuAnimation=null;hideDialog(menuDialog);
+  }
+  menuMedia.addEventListener('change',()=>closeMenu({animate:false}));
   function setSearchOpen(open){searchOpen=open;if(!open)filters.query='';renderScreen();document.getElementById(open?'search':'toggle-search').focus();}
   function renderScreen(){
     var titles={roster:admin?'育成を記録':'オペレーター一覧',summary:'統計',history:'リクエスト履歴'};
@@ -97,7 +128,7 @@
     try{el.showModal();}catch(error){restoreModalScroll();throw error;}
   }
   function restoreModalScroll(){
-    if(!modalScroll||document.querySelector('dialog[open]'))return;
+    if(!modalScroll||document.querySelector('dialog:modal'))return;
     var saved=modalScroll,html=document.documentElement;modalScroll=null;
     html.classList.remove('modal-scroll-locked');
     html.style.removeProperty('--modal-scroll-top');html.style.removeProperty('--modal-page-width');
@@ -113,10 +144,17 @@
   function closeDialog(){if(saving)return;if(dirty&&!window.confirm('保存していない変更を破棄しますか？'))return;hideDialog(dialog);dirty=false;selected=null;}
   function field(k,label,type){return '<div class="field"><label for="edit-'+k+'">'+label+'</label><input id="edit-'+k+'" data-field="'+k+'" type="'+(type||'number')+'" inputmode="numeric" min="'+(k==='elite'?0:1)+'" max="'+(k==='level'?Ark.caps[selected.rarity][1]:selected.rarity===6?9999:6)+'" value="'+e(draft[k]==='-'?'':draft[k])+'" placeholder="未入力"></div>';}
   function select(k,label,options){return '<div class="field"><label for="edit-'+k+'">'+label+'</label><select id="edit-'+k+'" data-field="'+k+'">'+options.map(([v,l])=>'<option value="'+v+'" '+(String(draft[k])===v?'selected':'')+'>'+l+'</option>').join('')+'</select></div>';}
+  function finishOwnedChange(accept){
+    if(accept&&selected){draft.owned=false;document.getElementById('edit-owned').checked=false;dirty=true;}
+    hideDialog(ownedDialog);
+  }
   function renderEditor(){
     var skillOptions=[['','未入力'],['-','対象外'],['7','7（未特化）'],...(selected.rarity>=4?[['M1','特化1'],['M2','特化2'],['M3','特化3']]:[])];
     dialog.innerHTML='<div class="dialog-body">'+dialogHeader('')+'<label class="owned-switch" for="edit-owned"><input id="edit-owned" type="checkbox" '+(draft.owned?'checked':'')+'>所持している</label><div class="edit-section-heading"><h3>基本育成</h3><button class="text-button" id="level-max">最終昇進・Lv MAX</button></div><div class="editor-grid">'+select('elite','昇進',[['','未入力'],['0','未昇進'],...(selected.rarity>=3?[['1','昇進1']]:[]),...(selected.rarity>=4?[['2','昇進2']]:[])])+field('level','レベル')+field('potential','潜在')+'</div><div class="edit-section"><div class="edit-section-heading"><h3>スキル特化</h3>'+(selected.rarity>=4?'<button class="text-button" id="all-m3">対象スキルをすべてM3</button>':'')+'</div><div class="fields">'+['s1','s2','s3'].map((k,i)=>select(k,'スキル'+(i+1),skillOptions)).join('')+'</div></div><div class="edit-section"><div class="edit-section-heading"><h3>モジュール</h3></div><div class="fields modules">'+['x','y','delta','alpha'].map((k,i)=>select(k,Ark.modules[i],[['','未入力'],['-','対象外'],['0','未開放'],['1','Lv1'],['2','Lv2'],['3','Lv3']])).join('')+'</div></div><p class="dialog-message" id="dialog-message" role="status"></p></div><div class="editor-save"><button class="secondary" data-close>キャンセル</button><button class="primary" id="save-training">'+icon('check')+'変更を保存</button></div>';
-    bindClose();document.getElementById('edit-owned').onchange=ev=>{draft.owned=ev.target.checked;dirty=true;};
+    bindClose();document.getElementById('edit-owned').onchange=ev=>{
+      if(!ev.target.checked){ev.target.checked=true;document.getElementById('owned-name').textContent=selected.name;showDialog(ownedDialog);return;}
+      draft.owned=ev.target.checked;dirty=true;
+    };
     dialog.querySelectorAll('[data-field]').forEach(input=>input.oninput=()=>{draft[input.dataset.field]=input.value;dirty=true;});
     document.getElementById('level-max').onclick=()=>{[draft.elite,draft.level]=Ark.caps[selected.rarity];dirty=true;renderEditor();};
     var all=document.getElementById('all-m3');if(all)all.onclick=()=>{['s1','s2','s3'].forEach(k=>{if(draft[k]!=='-')draft[k]='M3';});dirty=true;renderEditor();};
@@ -155,7 +193,7 @@
   function tick(){var seconds=Math.max(0,Math.ceil((remainingUntil-Date.now())/1000)),banner=document.getElementById('cooldown');if(banner){banner.classList.toggle('active',!admin&&seconds>0);banner.textContent='次のサポート依頼まで '+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');}var b=document.getElementById('send-request');if(b&&!saving){b.disabled=seconds>0;if(seconds>0&&b.textContent!=='送信しました')b.textContent='あと '+seconds+' 秒で依頼できます';else if(!seconds&&b.textContent!=='送信しました')b.innerHTML=icon('send')+'リクエスト送信';}}
   async function finishInitialLoading(){
     var loader=root.querySelector('.initial');
-    if(!loader||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    if(!loader||admin||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
     var remaining=Math.max(0,950-(performance.now()-initialStarted));
     if(remaining)await new Promise(resolve=>setTimeout(resolve,remaining));
     loader.classList.add('is-ready');
