@@ -232,7 +232,7 @@ html.modal-scroll-locked body{position:fixed;top:var(--modal-scroll-top);left:0;
  .nav-dialog{position:fixed;top:var(--mobile-header-height,72px);bottom:0;left:max(0px,calc((100vw - 1560px)/2));width:260px;max-width:260px;height:calc(100dvh - var(--mobile-header-height,72px));max-height:calc(100dvh - var(--mobile-header-height,72px));margin:0;border-radius:0;padding-top:16px;box-shadow:none;z-index:25}
 }
 @media(prefers-reduced-motion:reduce){.shell .main{transition:none}}
-.owned-confirm{max-width:430px;width:calc(100% - 28px);height:auto;margin:auto;border:1px solid var(--line);border-radius:16px}
+.owned-confirm{max-width:430px;width:calc(100% - 28px);height:fit-content;max-height:calc(100dvh - 28px);margin:auto;border:1px solid var(--line);border-radius:16px}
 .owned-confirm h2{margin:0 0 12px;font-size:20px}
 .owned-confirm .owned-name{font-size:17px;font-weight:600;margin:0 0 12px}
 .owned-confirm #owned-description{font-size:14px;line-height:1.8;color:var(--muted);margin:0 0 20px}
