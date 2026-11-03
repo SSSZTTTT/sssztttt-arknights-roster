@@ -192,3 +192,34 @@ html,body{background:var(--bg);color-scheme:dark}
 html.modal-scroll-locked{overflow:hidden;overscroll-behavior:none}
 html.modal-scroll-locked body{position:fixed;top:var(--modal-scroll-top);left:0;width:var(--modal-page-width);overflow:hidden!important}
 .dialog{overscroll-behavior:contain}
+
+/* 公開・入力共通のヘッダーと、必要なときだけ開くナビゲーション。 */
+.shell,.shell:has(#roster){display:flex;flex-direction:column}
+.site-header{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none;padding:16px 42px;background:var(--bg)}
+.site-header .brand{margin:0;gap:10px;flex:none}
+.site-header .menu-toggle{color:var(--blue);border-color:transparent;width:40px;height:40px}
+.menu-toggle svg{width:26px;height:26px}
+.shell .site-header .top-actions{position:static;margin-left:auto;gap:8px}
+.shell .main{max-width:none;padding:12px 42px 24px}
+.shell:has(#roster) .main{flex:1;height:auto;min-height:0;padding-top:4px;padding-bottom:12px}
+.page-heading{padding-right:0}
+.nav-dialog{width:min(320px,calc(100% - 32px));max-width:320px;height:100dvh;max-height:100dvh;margin:0 auto 0 0;padding:20px 16px max(20px,env(safe-area-inset-bottom));border-radius:0 16px 16px 0;border:0;border-right:1px solid var(--line)}
+.nav-dialog[open]{display:flex;flex-direction:column;gap:24px}
+.nav-dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-left:10px}
+.nav-dialog-heading h2{font-size:20px;margin:0;line-height:1.5}
+.nav-dialog .navigation{position:static;display:flex;flex-direction:column;gap:8px;flex:none;padding:0;background:none;border:0;backdrop-filter:none}
+.nav-dialog .nav-item{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;flex:none;min-height:52px;gap:12px;padding:12px 14px;font-size:15px;border-radius:8px}
+.nav-dialog .nav-item svg{width:22px;height:22px;flex:none}
+.nav-dialog .nav-item[aria-current=page]{background:var(--blue-deep);color:var(--blue)}
+.nav-dialog-foot{margin:auto 10px 0;color:var(--muted);font-size:12px;line-height:1.8}
+.toast{bottom:max(20px,env(safe-area-inset-bottom))}
+@media(max-width:760px){
+ .shell .site-header{gap:6px;padding:max(8px,env(safe-area-inset-top)) 14px 8px}
+ .site-header .brand{gap:7px}
+ .site-header .menu-toggle{width:34px;height:36px}
+ .shell .site-header .top-actions{gap:6px}
+ .shell .main,.shell:has(#roster) .main{padding:0 14px max(20px,env(safe-area-inset-bottom))}
+ .shell:has(#roster) .main{flex:none}
+ .nav-dialog{padding-top:max(16px,env(safe-area-inset-top))}
+}
+@media(max-width:360px){.shell .site-header .top-actions{gap:4px}.site-header .brand{gap:5px}}
