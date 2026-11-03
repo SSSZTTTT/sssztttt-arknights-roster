@@ -6,7 +6,7 @@ function fixture({local=new Map(),legacy=new Map(),readError,readPromise,loginRo
   let resolveLogin;const loginReady=new Promise(resolve=>{resolveLogin=resolve;});
   function element(){return {hidden:false,disabled:false,textContent:'',dataset:{applicationSrc:'app.js'},classList:{toggle(){}},replaceChildren(){}};}
   const storage=m=>({getItem:k=>m.get(k)||null,setItem:(k,v)=>m.set(k,v),removeItem:k=>m.delete(k)});
-  const c=vm.createContext({console,Date:{now:()=>now},crypto:webcrypto,TextEncoder,Uint8Array,setTimeout,clearTimeout,
+  const c=vm.createContext({console,performance:{now:()=>100},Date:{now:()=>now},crypto:webcrypto,TextEncoder,Uint8Array,setTimeout,clearTimeout,
     ARK_EDITOR_CONFIG:{apiUrl:endpoint},localStorage:storage(local),sessionStorage:storage(legacy),
     location:{pathname:'/edit/',origin:'https://owner.github.io',reload(){reloads++;}},
     document:{getElementById:id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);},createElement:()=>element(),head:{append(){}}},
@@ -54,6 +54,15 @@ test('an existing tab-only session migrates only after server authentication',as
 test('a network failure preserves the login and offers retry without exposing the editor',async()=>{
   const local=seed(new Map()),f=fixture({local,readError:Error('Network failed')});await f.settle();
   assert.ok(local.has(key));assert.equal(f.c.ArkTransport,undefined);assert.equal(f.elements.get('auth-retry').hidden,false);
+  assert.equal(f.elements.get('app').hidden,true);assert.equal(f.elements.get('auth-screen').hidden,false);
+});
+test('saved-session authentication shows only the loader while the roster is pending',async()=>{
+  let resolve;const pending=new Promise(r=>resolve=r),f=fixture({local:seed(new Map()),readPromise:pending});
+  await f.settle();
+  assert.equal(f.elements.get('app').hidden,false);assert.equal(f.elements.get('auth-screen').hidden,true);
+  assert.equal(f.c.ArkTransport,undefined);assert.equal(f.c.ARK_LOADING_STARTED,100);
+  resolve({operators:[],history:[]});await f.settle();
+  assert.ok(f.c.ArkTransport);assert.equal(f.elements.get('auth-screen').hidden,true);
 });
 test('logout revokes the server session and removes persistent and legacy credentials',async()=>{
   const f=fixture({local:seed(new Map())});await f.settle();await f.c.ArkTransport.logout();

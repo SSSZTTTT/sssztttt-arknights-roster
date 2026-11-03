@@ -32,6 +32,7 @@
     });return gisPromise;
   }
   async function prepare(){
+    auth.hidden=false;app.hidden=true;
     button.disabled=true;retry.hidden=true;status('ログインを準備しています…');
     try {
       bindingSecret=random();
@@ -68,8 +69,11 @@
   function validRoster(data){return data&&Array.isArray(data.operators)&&Array.isArray(data.history);}
   async function launch(roster){
     status('Loading');
-    firstData=validRoster(roster)?roster:await authenticated('read');
-    if(!validRoster(firstData))throw Error('取得データの形式が一致しません。');
+    window.ARK_LOADING_STARTED=performance.now();auth.hidden=true;app.hidden=false;
+    try{
+      firstData=validRoster(roster)?roster:await authenticated('read');
+      if(!validRoster(firstData))throw Error('取得データの形式が一致しません。');
+    }catch(error){auth.hidden=false;app.hidden=true;throw error;}
     window.ARK_ADMIN=true;
     window.ArkTransport={admin:true,demo:false,storage:{get:()=>null,set:()=>{}},
       get:async()=>{if(firstData){var d=firstData;firstData=null;return d;}return authenticated('read');},
@@ -88,8 +92,8 @@
   };
   retry.onclick=()=>session?start():prepare();
   async function start(){
-    if(!config.apiUrl){status('入力ツールは接続準備中です。');return;}
-    try{rpc=EditorRPC.create(config.apiUrl);}catch(error){status(error.message,true);return;}
+    if(!config.apiUrl){auth.hidden=false;app.hidden=true;status('入力ツールは接続準備中です。');return;}
+    try{rpc=EditorRPC.create(config.apiUrl);}catch(error){auth.hidden=false;app.hidden=true;status(error.message,true);return;}
     session=storedSession();
     if(session){try{await launch();return;}catch(error){status(error.message,true);if(session){retry.hidden=false;return;}}}
     await prepare();

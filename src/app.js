@@ -87,7 +87,7 @@
       document.querySelectorAll('[data-job]').forEach(b=>b.onclick=()=>{filters.job=b.dataset.job;document.querySelectorAll('[data-job]').forEach(el=>{el.classList.toggle('active',el===b);el.setAttribute('aria-pressed',String(el===b));});renderRows();});renderRows();tick();
     }else if(view==='summary'){document.querySelectorAll('[data-summary]').forEach(b=>b.onclick=()=>{summaryRarity=b.dataset.summary;renderScreen();});renderSummary();}
   }
-  function skills(o,cls){return '<div class="skill-pills '+(cls||'')+'">'+o.skills.map((s,i)=>'<span class="skill-pill '+(s==='M3'?'complete':s==='-'?'absent':s===''?'unfilled':'')+'"><b>S'+(i+1)+'</b> '+(s==='-'?'—':s===''?'未入力':e(s))+'</span>').join('')+'</div>';}
+  function skills(o,cls){return '<div class="skill-pills '+(cls||'')+'">'+o.skills.map((s,i)=>'<span class="skill-pill '+(s==='M3'?'complete':s==='-'?'absent':s===''?'unfilled':'')+'"><b>S'+(i+1)+(cls==='request-skills'?':':'')+'</b> '+(s==='-'?'—':s===''?'未入力':e(s))+'</span>').join('')+'</div>';}
   function modules(o,cls){var list=o.modules.map((v,i)=>v&&v!=='-'&&v!=='0'?'<span class="module-pill"><i>'+Ark.modules[i]+'</i>'+e(v)+'</span>':'').join('');return '<div class="module-pills '+(cls||'')+'">'+(cls==='row-modules'?'<span class="module-heading">Mod</span>':'')+(list||'<span class="muted">—</span>')+'</div>';}
   function operatorRow(o){
     var opening=admin?'<button class="oprow" data-edit-name="'+e(o.name)+'" aria-label="'+e(o.name)+' 育成を編集">':'<article class="oprow public-oprow" aria-label="'+e(o.name)+'">';
@@ -138,7 +138,7 @@
   function hideDialog(el){el.close();restoreModalScroll();}
   function openOperator(o){selected=o;dirty=false;saving=false;dialog.classList.toggle('editor-dialog',admin);if(admin){draft={...o.training};renderEditor();}else renderRequest();showDialog(dialog);}
   function dialogHeader(eyebrow){var title='<h2 id="dialog-title">'+e(selected.name)+'</h2>';return '<div class="dialog-top">'+(admin?title:'<p class="eyebrow">'+eyebrow+'</p>')+'<button class="icon-button" data-close aria-label="閉じる">'+icon('close')+'</button></div>'+(admin?'':title)+'<p class="dialog-sub">★'+selected.rarity+' · '+e(selected.job)+(admin?'':' · '+(selected.owned?'所持済み':'未所持'))+'</p>';}
-  function renderRequest(){dialog.innerHTML='<div class="dialog-body request-body">'+dialogHeader('SUPPORT REQUEST')+'<div class="detail-stats"><div><small>昇進</small><strong>'+n(selected.elite)+'</strong></div><div><small>レベル</small><strong>'+n(selected.level)+'</strong></div><div><small>潜在</small><strong>'+n(selected.potential)+'</strong></div></div><div class="detail-section"><p>スキル</p>'+skills(selected)+'</div><div class="detail-section"><p>モジュール</p>'+modules(selected)+'</div><p class="dialog-notice">このオペレーターをリクエストしますか？<br>送信ボタンを押すとDiscordに通知します。連続したリクエストは3分間のCTがあります。</p><div class="dialog-actions"><button class="primary" id="send-request">'+icon('send')+'リクエスト送信</button><button class="secondary" data-close>キャンセル</button></div><p class="dialog-message" id="dialog-message" role="status"></p></div>';bindClose();document.getElementById('send-request').onclick=sendRequest;tick();}
+  function renderRequest(){dialog.innerHTML='<div class="dialog-body request-body">'+dialogHeader('SUPPORT REQUEST')+'<div class="detail-stats"><div><small>昇進</small><strong>'+n(selected.elite)+'</strong></div><div><small>レベル</small><strong>'+n(selected.level)+'</strong></div><div><small>潜在</small><strong>'+n(selected.potential)+'</strong></div></div><div class="detail-section"><p>スキル</p>'+skills(selected,'request-skills')+'</div><div class="detail-section"><p>モジュール</p>'+modules(selected)+'</div><p class="dialog-notice">このオペレーターをリクエストしますか？<br>送信ボタンを押すとDiscordに通知します。連続したリクエストは3分間のCTがあります。</p><div class="dialog-actions"><button class="primary" id="send-request">'+icon('send')+'リクエスト送信</button><button class="secondary" data-close>キャンセル</button></div><p class="dialog-message" id="dialog-message" role="status"></p></div>';bindClose();document.getElementById('send-request').onclick=sendRequest;tick();}
   async function sendRequest(){if(saving||remainingUntil>Date.now())return;saving=true;var b=document.getElementById('send-request'),m=document.getElementById('dialog-message');b.disabled=true;b.innerHTML='<span class="spinner"></span>送信結果を確認中…';m.textContent='この画面を開いたままお待ちください。';try{var result=await T.request(selected.name);if(result.retryAt)setCooldown(result.retryAt);if(result.status==='sent'){m.textContent=T.demo?'プレビュー：実際の通知は送信していません。':'Discordにリクエストを送信しました。';b.textContent='送信しました';if(!T.demo)data.history.unshift({name:selected.name,time:new Date().toISOString()});}else{m.classList.add('error');m.textContent=result.message||'送信できませんでした。時間をおいてお試しください。';if(result.status==='uncertain')setCooldown(Math.max(remainingUntil,Date.now()+180000));b.textContent='リクエスト送信';}}catch(err){m.classList.add('error');m.textContent=err.message;setCooldown(Date.now()+180000);b.textContent='送信結果を確認できません';}finally{saving=false;tick();}}
   function bindClose(){dialog.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeDialog);}
   function closeDialog(){if(saving)return;if(dirty&&!window.confirm('保存していない変更を破棄しますか？'))return;hideDialog(dialog);dirty=false;selected=null;}
@@ -193,9 +193,13 @@
   function tick(){var seconds=Math.max(0,Math.ceil((remainingUntil-Date.now())/1000)),banner=document.getElementById('cooldown');if(banner){banner.classList.toggle('active',!admin&&seconds>0);banner.textContent='次のサポート依頼まで '+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');}var b=document.getElementById('send-request');if(b&&!saving){b.disabled=seconds>0;if(seconds>0&&b.textContent!=='送信しました')b.textContent='あと '+seconds+' 秒で依頼できます';else if(!seconds&&b.textContent!=='送信しました')b.innerHTML=icon('send')+'リクエスト送信';}}
   async function finishInitialLoading(){
     var loader=root.querySelector('.initial');
-    if(!loader||admin||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-    var remaining=Math.max(0,950-(performance.now()-initialStarted));
+    if(!loader)return;
+    // 即時にデータが返っても、初回の線を描画してから一覧へ切り替える。
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    var started=Number.isFinite(window.ARK_LOADING_STARTED)?window.ARK_LOADING_STARTED:initialStarted;
+    var remaining=Math.max(0,950-(performance.now()-started));
     if(remaining)await new Promise(resolve=>setTimeout(resolve,remaining));
+    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
     loader.classList.add('is-ready');
     await new Promise(resolve=>setTimeout(resolve,180));
   }
