@@ -188,6 +188,11 @@ html,body{background:var(--bg);color-scheme:dark}
 .brand-mark svg{width:34px;height:34px;stroke-width:1.5}
 @media(max-width:760px){.brand-mark svg{width:29px;height:29px}}
 
+/* iOSでもダイアログの背後を動かさず、閉じる際にJSで一覧の位置を復元する。 */
+html.modal-scroll-locked{overflow:hidden;overscroll-behavior:none}
+html.modal-scroll-locked body{position:fixed;top:var(--modal-scroll-top);left:0;width:var(--modal-page-width);overflow:hidden!important}
+.dialog{overscroll-behavior:contain}
+
 /* 入力用GASのHTMLにだけ組み込むライトテーマ。寸法・操作は共通CSSを使う。 */
 :root{color-scheme:light;--bg:#f5f6f8;--panel:#ffffff;--panel2:#eef1f5;--line:#d9dfe7;--text:#202b3a;--muted:#596779;--blue:#1764bb;--blue-deep:#e8f1fc;--green:#25745f;--danger:#b42332}
 html,body{background:var(--bg);color-scheme:light}
@@ -366,6 +371,7 @@ if(typeof module!=='undefined')module.exports=Ark;
     var importButton=document.getElementById('wiki-import');if(importButton)importButton.onclick=openImport;
     observeHeader();dialog=document.getElementById('detail-dialog');
     importDialog=document.getElementById('import-dialog');importDialog.addEventListener('cancel',ev=>{ev.preventDefault();closeImport();});importDialog.addEventListener('click',ev=>{if(ev.target===importDialog)closeImport();});
+    dialog.addEventListener('close',restoreModalScroll);importDialog.addEventListener('close',restoreModalScroll);
     dialog.addEventListener('cancel',ev=>{ev.preventDefault();closeDialog();});dialog.addEventListener('click',ev=>{if(ev.target===dialog)closeDialog();});
     document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;document.querySelectorAll('[data-view]').forEach(el=>{if(el===b)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});renderScreen();window.scrollTo({top:0});});
     document.getElementById('refresh').onclick=()=>load(true);document.getElementById('toggle-search').onclick=()=>setSearchOpen(!searchOpen);renderScreen();
@@ -417,12 +423,32 @@ if(typeof module!=='undefined')module.exports=Ark;
     return '<div class="overview summary-overview">'+metrics.map(([label,key,denominator,ic])=>'<section class="metric"><h2 class="metric-label">'+label+icon(ic)+'</h2><dl class="metric-comparison">'+groups.map(g=>'<div><dt>'+g.label+'</dt><dd><strong>'+g[key]+'</strong><span>'+(key==='count'?' / '+g[denominator]+'人':'人')+'</span><small>'+percent(g[key],g[denominator])+'</small></dd></div>').join('')+'</dl></section>').join('')+'</div><p class="section-note summary-scope">完凸率の集計からはコラボオペレーターなどの潜在がないオペレーターは除外しています</p>';
   }
   function renderSummary(){var s=Ark.summarize(data.operators,summaryRarity),t=s.total;document.getElementById('summary-content').innerHTML='<div class="summary-table-wrap"><table class="summary-table"><thead><tr><th scope="col">職業</th><th scope="col">所持人数</th><th scope="col">Lv MAX / 割合</th><th scope="col">特化3 / 対象スキル</th><th scope="col">全特化人数</th><th scope="col">完凸 / 割合</th></tr></thead><tbody>'+[...s.rows,t].map(c=>'<tr><td>'+c.job+'</td><td>'+c.count+'</td><td>'+c.max+'<small>'+percent(c.max,c.count)+'</small></td><td>'+c.m3+' / '+c.skills+'<small>'+percent(c.m3,c.skills)+'</small></td><td>'+c.mastered+'</td><td>'+c.potential+'<small>'+percent(c.potential,c.potentialCount)+'</small></td></tr>').join('')+'</tbody></table></div>';}
-  function openOperator(o){selected=o;dirty=false;saving=false;dialog.classList.toggle('editor-dialog',admin);if(admin){draft={...o.training};renderEditor();}else renderRequest();dialog.showModal();}
+  var modalScroll=null;
+  function showDialog(el){
+    if(!modalScroll){
+      var region=document.querySelector('.roster-scroll'),html=document.documentElement;
+      modalScroll={x:window.scrollX,y:window.scrollY,listTop:region?region.scrollTop:0};
+      html.style.setProperty('--modal-scroll-top',-modalScroll.y+'px');
+      html.style.setProperty('--modal-page-width',html.clientWidth+'px');
+      html.classList.add('modal-scroll-locked');
+    }
+    try{el.showModal();}catch(error){restoreModalScroll();throw error;}
+  }
+  function restoreModalScroll(){
+    if(!modalScroll||document.querySelector('dialog[open]'))return;
+    var saved=modalScroll,html=document.documentElement;modalScroll=null;
+    html.classList.remove('modal-scroll-locked');
+    html.style.removeProperty('--modal-scroll-top');html.style.removeProperty('--modal-page-width');
+    var region=document.querySelector('.roster-scroll');if(region)region.scrollTop=saved.listTop;
+    window.scrollTo({left:saved.x,top:saved.y,behavior:'instant'});
+  }
+  function hideDialog(el){el.close();restoreModalScroll();}
+  function openOperator(o){selected=o;dirty=false;saving=false;dialog.classList.toggle('editor-dialog',admin);if(admin){draft={...o.training};renderEditor();}else renderRequest();showDialog(dialog);}
   function dialogHeader(eyebrow){var title='<h2 id="dialog-title">'+e(selected.name)+'</h2>';return '<div class="dialog-top">'+(admin?title:'<p class="eyebrow">'+eyebrow+'</p>')+'<button class="icon-button" data-close aria-label="閉じる">'+icon('close')+'</button></div>'+(admin?'':title)+'<p class="dialog-sub">★'+selected.rarity+' · '+e(selected.job)+(admin?'':' · '+(selected.owned?'所持済み':'未所持'))+'</p>';}
   function renderRequest(){dialog.innerHTML='<div class="dialog-body">'+dialogHeader('SUPPORT REQUEST')+'<div class="detail-stats"><div><small>昇進</small><strong>'+n(selected.elite)+'</strong></div><div><small>レベル</small><strong>'+n(selected.level)+'</strong></div><div><small>潜在</small><strong>'+n(selected.potential)+'</strong></div></div><div class="detail-section"><p>スキル特化</p>'+skills(selected)+'</div><div class="detail-section"><p>モジュール</p>'+modules(selected)+'</div><p class="dialog-notice">このオペレーターをリクエストしますか？<br>送信ボタンを押すとDiscordに通知します。連続したリクエストは3分間のCTがあります。</p><div class="dialog-actions"><button class="primary" id="send-request">'+icon('send')+'リクエスト送信</button><button class="secondary" data-close>キャンセル</button></div><p class="dialog-message" id="dialog-message" role="status"></p></div>';bindClose();document.getElementById('send-request').onclick=sendRequest;tick();}
   async function sendRequest(){if(saving||remainingUntil>Date.now())return;saving=true;var b=document.getElementById('send-request'),m=document.getElementById('dialog-message');b.disabled=true;b.innerHTML='<span class="spinner"></span>送信結果を確認中…';m.textContent='この画面を開いたままお待ちください。';try{var result=await T.request(selected.name);if(result.retryAt)setCooldown(result.retryAt);if(result.status==='sent'){m.textContent=T.demo?'プレビュー：実際の通知は送信していません。':'Discordにリクエストを送信しました。';b.textContent='送信しました';if(!T.demo)data.history.unshift({name:selected.name,time:new Date().toISOString()});}else{m.classList.add('error');m.textContent=result.message||'送信できませんでした。時間をおいてお試しください。';if(result.status==='uncertain')setCooldown(Math.max(remainingUntil,Date.now()+180000));b.textContent='リクエスト送信';}}catch(err){m.classList.add('error');m.textContent=err.message;setCooldown(Date.now()+180000);b.textContent='送信結果を確認できません';}finally{saving=false;tick();}}
   function bindClose(){dialog.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeDialog);}
-  function closeDialog(){if(saving)return;if(dirty&&!window.confirm('保存していない変更を破棄しますか？'))return;dialog.close();dirty=false;selected=null;}
+  function closeDialog(){if(saving)return;if(dirty&&!window.confirm('保存していない変更を破棄しますか？'))return;hideDialog(dialog);dirty=false;selected=null;}
   function field(k,label,type){return '<div class="field"><label for="edit-'+k+'">'+label+'</label><input id="edit-'+k+'" data-field="'+k+'" type="'+(type||'number')+'" inputmode="numeric" min="'+(k==='elite'?0:1)+'" max="'+(k==='level'?Ark.caps[selected.rarity][1]:selected.rarity===6?9999:6)+'" value="'+e(draft[k]==='-'?'':draft[k])+'" placeholder="未入力"></div>';}
   function select(k,label,options){return '<div class="field"><label for="edit-'+k+'">'+label+'</label><select id="edit-'+k+'" data-field="'+k+'">'+options.map(([v,l])=>'<option value="'+v+'" '+(String(draft[k])===v?'selected':'')+'>'+l+'</option>').join('')+'</select></div>';}
   function renderEditor(){
@@ -434,8 +460,8 @@ if(typeof module!=='undefined')module.exports=Ark;
     var all=document.getElementById('all-m3');if(all)all.onclick=()=>{['s1','s2','s3'].forEach(k=>{if(draft[k]!=='-')draft[k]='M3';});dirty=true;renderEditor();};
     document.getElementById('save-training').onclick=saveTraining;
   }
-  async function saveTraining(){if(saving)return;var m=document.getElementById('dialog-message');try{var values=Ark.validate(draft,selected.rarity);saving=true;dialog.querySelectorAll('button,input,select').forEach(b=>b.disabled=true);document.getElementById('save-training').innerHTML='<span class="spinner"></span>保存中…';var op=await T.save(selected,values);data.operators[data.operators.findIndex(o=>o.name===op.name)]=op;data.updatedAt=new Date().toISOString();dirty=false;dialog.close();selected=null;renderScreen();toast(T.demo?'プレビュー内に保存しました（シートは変更していません）':'育成記録を保存しました');}catch(err){m.classList.add('error');m.textContent=err.message;dialog.querySelectorAll('button,input,select').forEach(b=>b.disabled=false);document.getElementById('save-training').textContent='変更を保存';}finally{saving=false;}}
-  function closeImport(){if(!importBusy&&!saving){importDialog.close();importPlan=null;}}
+  async function saveTraining(){if(saving)return;var m=document.getElementById('dialog-message');try{var values=Ark.validate(draft,selected.rarity);saving=true;dialog.querySelectorAll('button,input,select').forEach(b=>b.disabled=true);document.getElementById('save-training').innerHTML='<span class="spinner"></span>保存中…';var op=await T.save(selected,values);data.operators[data.operators.findIndex(o=>o.name===op.name)]=op;data.updatedAt=new Date().toISOString();dirty=false;selected=null;renderScreen();hideDialog(dialog);toast(T.demo?'プレビュー内に保存しました（シートは変更していません）':'育成記録を保存しました');}catch(err){m.classList.add('error');m.textContent=err.message;dialog.querySelectorAll('button,input,select').forEach(b=>b.disabled=false);document.getElementById('save-training').textContent='変更を保存';}finally{saving=false;}}
+  function closeImport(){if(!importBusy&&!saving){hideDialog(importDialog);importPlan=null;}}
   function importContents(message,error){
     var p=importPlan,hasChanges=p&&(p.additions.length||p.updates.length||p.summaryReferenceUpdate);
     function rows(list){return '<ul class="import-list">'+list.map(o=>'<li><strong>'+e(o.name)+'</strong><span>★'+e(o.rarity)+' · '+e(o.job)+'</span><small>実装日 '+e(o.date)+'</small></li>').join('')+'</ul>';}
@@ -447,7 +473,7 @@ if(typeof module!=='undefined')module.exports=Ark;
   }
   function openImport(){
     if(dirty||saving||importBusy){toast('編集中の変更を保存またはキャンセルしてから取得してください。');return;}
-    importPlan=null;importContents('');importDialog.showModal();scanImport();
+    importPlan=null;importContents('');showDialog(importDialog);scanImport();
   }
   async function scanImport(){
     if(importBusy)return;importPlan=null;importBusy=true;importContents('日本実装済みのオペレーターを確認しています…');
@@ -459,7 +485,7 @@ if(typeof module!=='undefined')module.exports=Ark;
     importBusy=true;saving=true;importContents('確認した内容を反映しています…');
     try{
       var result=await T.importCommit(importPlan.planId);
-      saving=false;importBusy=false;importDialog.close();importPlan=null;
+      saving=false;importBusy=false;hideDialog(importDialog);importPlan=null;
       await load(false);toast('新規 '+result.added+'人を追加しました'+(result.updated?'（基本情報の訂正 '+result.updated+'人）':''));
     }catch(error){saving=false;importBusy=false;importPlan=null;importContents(error.message,true);}
   }

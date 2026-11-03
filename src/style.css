@@ -187,3 +187,8 @@ html,body{background:var(--bg);color-scheme:dark}
 .brand-mark{background:transparent;color:var(--blue);clip-path:none}
 .brand-mark svg{width:34px;height:34px;stroke-width:1.5}
 @media(max-width:760px){.brand-mark svg{width:29px;height:29px}}
+
+/* iOSでもダイアログの背後を動かさず、閉じる際にJSで一覧の位置を復元する。 */
+html.modal-scroll-locked{overflow:hidden;overscroll-behavior:none}
+html.modal-scroll-locked body{position:fixed;top:var(--modal-scroll-top);left:0;width:var(--modal-page-width);overflow:hidden!important}
+.dialog{overscroll-behavior:contain}
