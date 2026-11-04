@@ -8,8 +8,10 @@ function webSaveTraining_(payload) {
     var values=Ark.validate(payload.values,op.rarity),changes=[];
     // 保存直前にも行と版を確認する（シートを直接並べ替えた場合など）。
     var current=record.sheet.getRange(record.row,1,1,record.headers.length).getValues()[0];
-    if(webOperator_(current,record.headers,true).version!==op.version)throw Error('保存前に行が変更されました。一覧を更新してください。');
+    var currentOperator=webOperator_(current,record.headers,true);
+    if(currentOperator.version!==op.version)throw Error('保存前に行が変更されました。一覧を更新してください。');
     Ark.fields.forEach(k=>{var col=record.headers.indexOf(Ark.columns[k]);if(record.values[col]!==values[k])changes.push({col:col,value:values[k]});});
+    if(!changes.length)return currentOperator;
     var formulas=record.sheet.getRange(record.row,1,1,record.headers.length).getFormulas()[0];
     if(changes.some(c=>formulas[c.col]))throw Error('編集対象に数式があります。シートを確認してください。');
     // 他の列の数式や入力を上書きしない。連続した変更列ごとに保存する。

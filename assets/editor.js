@@ -2,6 +2,7 @@
   'use strict';
   var config=window.ARK_EDITOR_CONFIG||{},auth=document.getElementById('auth-screen'),button=document.getElementById('google-login'),message=document.getElementById('auth-message'),retry=document.getElementById('auth-retry'),app=document.getElementById('app');
   var rpc,session=null,client=null,challenge=null,bindingSecret='',launched=false,firstData=null,gisPromise,authGeneration=0;
+  var applicationSrc;
   var storageKey='ark_editor_session_v1:'+location.pathname;
   function status(text,error){message.textContent=text;message.classList.toggle('error',!!error);}
   function storeSession(value){
@@ -48,6 +49,7 @@
     button.disabled=true;status('アカウントを確認しています…');
     try {
       if(response.error||response.state!==challenge.state||!response.code)throw Error('ログインを完了できませんでした。もう一度お試しください。');
+      preloadApplication();
       var s=await rpc('login',{state:challenge.state,bindingSecret:bindingSecret,code:response.code,includeRoster:true});
       if(!s||!/^[a-f0-9]{64}$/.test(s.token)||!Number.isFinite(s.expiresAt)||s.expiresAt<=Date.now())throw Error('ログイン結果を確認できませんでした。');
       storeSession({token:s.token,expiresAt:s.expiresAt});
@@ -67,14 +69,22 @@
     }catch(error){if(error.code==='AUTH_REQUIRED'&&generation===authGeneration)storeSession(null);throw error;}
   }
   function validRoster(data){return data&&Array.isArray(data.operators)&&Array.isArray(data.history);}
+  function preloadApplication(){
+    if(applicationSrc)return;
+    // 認証通信中にスクリプトを取得し、実行は一覧の認証後まで待つ。
+    applicationSrc=document.getElementById('editor-bootstrap').dataset.applicationSrc;
+    var preload=document.createElement('link');
+    preload.rel='preload';preload.as='script';preload.href=applicationSrc;
+    document.head.append(preload);
+  }
   async function launch(roster){
     status('Loading');
     window.ARK_LOADING_STARTED=performance.now();auth.hidden=true;app.hidden=false;
     try{
+      preloadApplication();
       firstData=validRoster(roster)?roster:await authenticated('read');
       if(!validRoster(firstData))throw Error('取得データの形式が一致しません。');
     }catch(error){auth.hidden=false;app.hidden=true;throw error;}
-    window.ARK_ADMIN=true;
     window.ArkTransport={admin:true,demo:false,storage:{get:()=>null,set:()=>{}},
       get:async()=>{if(firstData){var d=firstData;firstData=null;return d;}return authenticated('read');},
       save:(op,values)=>authenticated('save',{name:op.name,version:op.version,values:values}),
@@ -82,7 +92,7 @@
       importCommit:planId=>authenticated('importCommit',{planId:planId}),
       logout:async()=>{if(session)await rpc('logout',{},session.token);storeSession(null);app.replaceChildren();location.reload();}
     };
-    if(!launched){launched=true;var script=document.createElement('script');script.src=document.getElementById('editor-bootstrap').dataset.applicationSrc;script.onerror=()=>{auth.hidden=false;app.hidden=true;status('入力画面を読み込めませんでした。再読み込みしてください。',true);};document.head.append(script);}
+    if(!launched){launched=true;var script=document.createElement('script');script.src=applicationSrc;script.onerror=()=>{auth.hidden=false;app.hidden=true;status('入力画面を読み込めませんでした。再読み込みしてください。',true);};document.head.append(script);}
     auth.hidden=true;app.hidden=false;
   }
   button.onclick=()=>{

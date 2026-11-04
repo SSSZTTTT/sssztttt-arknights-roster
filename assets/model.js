@@ -44,17 +44,34 @@ var Ark = (function () {
     var jobRank=j=>jobs.includes(j)?jobs.indexOf(j):jobs.length;
     return rank(b.elite)-rank(a.elite)||rank(b.level)-rank(a.level)||jobRank(a.job)-jobRank(b.job)||compareNames(a.name,b.name);
   }
+  function searchName(value){return text(value).toLowerCase().replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-96));}
+  function filterOperators(operators,filters,getSearchName){
+    var query=searchName(filters.query||''),rarity=Number(filters.rarity),state=filters.state;
+    return operators.filter(o=>
+      (!filters.job||o.job===filters.job)&&(!filters.rarity||o.rarity===rarity)&&(!query||getSearchName(o).includes(query))&&
+      (!state||state==='owned'&&o.owned||state==='unowned'&&!o.owned||state==='unfinished'&&o.owned&&(!maxed(o)||(o.rarity>=4&&!mastered(o))))
+    );
+  }
+  function operatorOrder(sort){
+    if(sort==='name')return (a,b)=>compareNames(a.name,b.name);
+    if(sort==='rarity')return (a,b)=>b.rarity-a.rarity||String(b.date||'').localeCompare(String(a.date||''))||compareNames(a.name,b.name);
+    if(sort==='recent')return (a,b)=>String(b.date||'').localeCompare(String(a.date||''))||b.rarity-a.rarity||compareNames(a.name,b.name);
+    return levelOrder;
+  }
   function search(operators,filters){
-    var q=text(filters.query||'').toLowerCase().replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-96));
-    return operators.filter(o=>{
-      var n=text(o.name).toLowerCase().replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-96));
-      return (!q||n.includes(q))&&(!filters.job||o.job===filters.job)&&(!filters.rarity||o.rarity===Number(filters.rarity))&&(!filters.state||filters.state==='owned'&&o.owned||filters.state==='unowned'&&!o.owned||filters.state==='unfinished'&&o.owned&&(!maxed(o)||(o.rarity>=4&&!mastered(o))));
-    }).sort((a,b)=>{
-      if(filters.sort==='name')return compareNames(a.name,b.name);
-      if(filters.sort==='rarity')return b.rarity-a.rarity||String(b.date||'').localeCompare(String(a.date||''))||compareNames(a.name,b.name);
-      if(filters.sort==='recent')return String(b.date||'').localeCompare(String(a.date||''))||b.rarity-a.rarity||compareNames(a.name,b.name);
-      return levelOrder(a,b);
-    });
+    return filterOperators(operators,filters,o=>searchName(o.name)).sort(operatorOrder(filters.sort));
+  }
+  function prepareSearch(operators){
+    var snapshot=operators.slice(),orders=new Map(),names=new Map();
+    function normalizedName(o){
+      if(!names.has(o))names.set(o,searchName(o.name));
+      return names.get(o);
+    }
+    return filters=>{
+      var sort=filters.sort||'level';
+      if(!orders.has(sort))orders.set(sort,snapshot.slice().sort(operatorOrder(sort)));
+      return filterOperators(orders.get(sort),filters,normalizedName);
+    };
   }
   function validate(values,rarity){
     if(!values||typeof values!=='object'||Array.isArray(values)||Object.keys(values).length!==fields.length||fields.some(k=>!Object.prototype.hasOwnProperty.call(values,k)))throw Error('入力項目が一致しません。再読み込みしてください。');
@@ -67,6 +84,6 @@ var Ark = (function () {
     ['x','y','delta','alpha'].forEach(k=>{var v=text(values[k]);if(!['','-','0','1','2','3'].includes(v))throw Error('モジュールは1〜3で選択してください。');out[k]=v===''||v==='-'?v:Number(v);});
     return out;
   }
-  return {jobs:jobs,caps:caps,modules:modules,fields:fields,columns:columns,text:text,name:name,fromRow:fromRow,maxed:maxed,mastered:mastered,hasPotential:hasPotential,summarize:summarize,search:search,validate:validate};
+  return {jobs:jobs,caps:caps,modules:modules,fields:fields,columns:columns,text:text,name:name,fromRow:fromRow,maxed:maxed,mastered:mastered,hasPotential:hasPotential,summarize:summarize,search:search,prepareSearch:prepareSearch,validate:validate};
 })();
 if(typeof module!=='undefined')module.exports=Ark;

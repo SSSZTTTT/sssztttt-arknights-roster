@@ -79,3 +79,23 @@ test('explicit recent and rarity sorts remain available alongside level sorting'
   assert.equal(Ark.search(list,{sort:'recent'})[0].name,'新しい');
   assert.equal(Ark.search(list,{sort:'rarity'})[0].name,'高レア');
 });
+
+test('prepared roster searches preserve all sort and filter modes across repeated searches',()=>{
+  const operators=[
+    op({name:'W',rarity:6,date:'2020-01-01',job:'狙撃',owned:false}),
+    op({name:'アーミヤ',rarity:5,date:'2020-01-01',job:'術師'}),
+    op({name:'百錬ガヴィル',rarity:6,date:'2023-01-01',job:'前衛',level:1}),
+    op({name:'エイヤフィヤトラ',rarity:6,date:'2020-01-01',job:'術師',level:90})
+  ];
+  const search=Ark.prepareSearch(operators);
+  for(const sort of ['level','name','recent','rarity']){
+    for(const filters of [{},{query:'ｗ'},{query:'あーみや'},{job:'術師'},{rarity:'6'},
+      {state:'owned'},{state:'unowned'},{state:'unfinished'},{query:'い',rarity:'6',job:'術師'}]){
+      const request={...filters,sort};
+      assert.deepEqual(search(request),Ark.search(operators,request));
+    }
+  }
+  const updated=operators.map(o=>o.name==='百錬ガヴィル'?{...o,level:90}:o);
+  assert.equal(search({query:'百錬'})[0].level,1);
+  assert.equal(Ark.prepareSearch(updated)({query:'百錬'})[0].level,90);
+});

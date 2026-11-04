@@ -117,11 +117,10 @@ test('malformed envelopes, oversized requests, GET and missing config never expo
   const f=fixture();assert.equal(f.c.doPost({parameter:{payload:'not-json'}}).text,'Request unavailable');assert.equal(f.c.doPost({parameter:{payload:'x'.repeat(20001)}}).text,'Request unavailable');assert.doesNotMatch(f.c.doGet().text,/operators|email|secret/i);
   f.props.delete('OWNER_EMAIL');assert.equal(f.request('read').text,'Request unavailable');assert.equal(f.reads,0);
 });
-test('new public endpoint exposes no unauthenticated training RPC; old owner-only app remains separate',()=>{
+test('GitHub editor deployment exposes no direct training RPC',()=>{
   const files=fs.readdirSync('gas/editor').filter(n=>n.endsWith('.gs')).map(n=>fs.readFileSync('gas/editor/'+n,'utf8')).join('\n');
   const globals=vm.createContext({});vm.runInContext(files,globals);
   const exposed=Object.keys(globals).filter(n=>typeof globals[n]==='function'&&!n.endsWith('_')).sort();
   assert.deepEqual(exposed,['doGet','doPost']);
-  assert.equal(JSON.parse(fs.readFileSync('gas/admin/appsscript.json','utf8')).webapp.access,'MYSELF');
   assert.equal(JSON.parse(fs.readFileSync('gas/editor/appsscript.json','utf8')).webapp.access,'ANYONE_ANONYMOUS');
 });

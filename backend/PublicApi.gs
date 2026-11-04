@@ -3,7 +3,15 @@ function doGet(e) {
   var p=e&&e.parameter||{},result;
   try{
     if(p.action==='receipt')result={ok:true,data:supportReceipt_(p.requestId)};
-    else if(!p.action||p.action==='roster')result={ok:true,data:webRoster_(false)};
+    else if(!p.action||p.action==='roster'){
+      var data=webRoster_(false);
+      if(p.format==='compact'){
+        // 公開項目の並び順は src/transport.js の復元処理と揃える。
+        data.operators=data.operators.map(o=>[o.name,o.rarity,o.job,o.owned,o.elite,o.level,o.potential,o.skills,o.modules,o.date]);
+        data.format='compact';
+      }
+      result={ok:true,data:data};
+    }
     else result={ok:false,error:'未対応の操作です。'};
   }catch(_){result={ok:false,error:'記録を取得できませんでした。時間をおいて再度お試しください。'};}
   return publicOutput_(result,p.callback);
@@ -30,9 +38,8 @@ function supportReceipt_(id) {
   var r=JSON.parse(value);if(Date.now()-r.createdAt>3600000)return {status:'not_found'};
   return {status:r.status,retryAt:r.retryAt||0,message:r.message||''};
 }
-function supportLimits_() {
-  var p=PropertiesService.getScriptProperties();
-  function positive(key,fallback,min,max){var n=Number(p.getProperty(key)||fallback);return Number.isFinite(n)&&n>=min&&n<=max?Math.floor(n):fallback;}
+function supportLimits_(settings) {
+  function positive(key,fallback,min,max){var n=Number(settings[key]||fallback);return Number.isFinite(n)&&n>=min&&n<=max?Math.floor(n):fallback;}
   return {cooldown:positive('REQUEST_COOLDOWN_SECONDS',180,30,3600)*1000,global:positive('GLOBAL_COOLDOWN_SECONDS',15,5,300)*1000,daily:positive('DAILY_REQUEST_LIMIT',50,1,500)};
 }
 function supportReserve_(guard,input,now,day,limits) {
@@ -45,26 +52,27 @@ function supportReserve_(guard,input,now,day,limits) {
   guard.clients[input.clientId]=now+limits.cooldown;guard.operators[input.name]=now+limits.cooldown;guard.globalUntil=now+limits.global;guard.count++;
   return {guard:guard,receipt:{status:'pending',retryAt:now+limits.cooldown}};
 }
-function supportCleanReceipts_(props,now) {
-  var all=props.getProperties(),rows=[];
-  Object.keys(all).filter(k=>k.startsWith('ARK_RECEIPT_')).forEach(k=>{try{var r=JSON.parse(all[k]);if(now-r.createdAt>3600000)props.deleteProperty(k);else rows.push({key:k,time:r.createdAt});}catch(_){props.deleteProperty(k);}});
+function supportCleanReceipts_(props,settings,now) {
+  var rows=[];
+  Object.keys(settings).filter(k=>k.startsWith('ARK_RECEIPT_')).forEach(k=>{try{var r=JSON.parse(settings[k]);if(now-r.createdAt>3600000)props.deleteProperty(k);else rows.push({key:k,time:r.createdAt});}catch(_){props.deleteProperty(k);}});
   rows.sort((a,b)=>b.time-a.time).slice(149).forEach(r=>props.deleteProperty(r.key));
 }
 function receiveSupport_(input) {
   if(!supportToken_(input.requestId)||!supportToken_(input.clientId)||typeof input.name!=='string'||input.name.length>100)throw Error('Invalid request');
-  var props=PropertiesService.getScriptProperties(),lock=LockService.getScriptLock(),key='ARK_RECEIPT_'+input.requestId,now=Date.now(),receipt,webhook;
+  var props=PropertiesService.getScriptProperties(),lock=LockService.getScriptLock(),key='ARK_RECEIPT_'+input.requestId,now=Date.now(),receipt,webhook,ss;
   if(!lock.tryLock(10000))return {status:'pending'};
   try{
-    var existing=props.getProperty(key);if(existing)return JSON.parse(existing);
-    supportCleanReceipts_(props,now);
-    webhook=props.getProperty('DISCORD_WEBHOOK_URL')||'';
+    var settings=props.getProperties(),existing=settings[key];if(existing)return JSON.parse(existing);
+    supportCleanReceipts_(props,settings,now);
+    webhook=settings.DISCORD_WEBHOOK_URL||'';
     if(!/^https:\/\/discord\.com\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+$/.test(webhook)){
       receipt={status:'unavailable',message:'サポート依頼は現在準備中です。',createdAt:now};props.setProperty(key,JSON.stringify(receipt));return receipt;
     }
     // 表に実在する全オペレーターが対象。未所持を理由に除外しない。
-    var record=webFindOperator_(webSpreadsheet_(),Ark.name(input.name));input.name=Ark.name(record.values[record.headers.indexOf('オペレーター名')]);
-    var raw=props.getProperty('ARK_SUPPORT_GUARD'),guard=raw?JSON.parse(raw):null;
-    var reserved=supportReserve_(guard,input,now,Utilities.formatDate(new Date(now),'Asia/Tokyo','yyyy-MM-dd'),supportLimits_());
+    ss=webSpreadsheet_(settings);
+    var record=webFindOperator_(ss,Ark.name(input.name));input.name=Ark.name(record.values[record.headers.indexOf('オペレーター名')]);
+    var raw=settings.ARK_SUPPORT_GUARD,guard=raw?JSON.parse(raw):null;
+    var reserved=supportReserve_(guard,input,now,Utilities.formatDate(new Date(now),'Asia/Tokyo','yyyy-MM-dd'),supportLimits_(settings));
     receipt=Object.assign({createdAt:now},reserved.receipt);props.setProperty('ARK_SUPPORT_GUARD',JSON.stringify(reserved.guard));props.setProperty(key,JSON.stringify(receipt));
   }finally{lock.releaseLock();}
   if(receipt.status!=='pending')return receipt;
@@ -74,7 +82,7 @@ function receiveSupport_(input) {
     var code=response.getResponseCode();
     if(code>=200&&code<300){
       receipt.status='sent';receipt.message='Discordに送信しました。';
-      try{var ss=webSpreadsheet_(),history=ss.getSheetByName('履歴')||ss.insertSheet('履歴');if(!history.getLastRow())history.appendRow(['日時','オペレーター名']);history.appendRow([new Date(),input.name]);}catch(_){console.error('Discord送信済みですが履歴を書き込めませんでした。');}
+      try{var history=ss.getSheetByName('履歴')||ss.insertSheet('履歴');if(!history.getLastRow())history.appendRow(['日時','オペレーター名']);history.appendRow([new Date(),input.name]);}catch(_){console.error('Discord送信済みですが履歴を書き込めませんでした。');}
     }else if(code>=500){receipt.status='uncertain';receipt.message='通知の結果を確認できません。Discordと履歴を確認してから、時間をおいてお試しください。';}
     else{receipt.status='failed';receipt.message='Discordへの送信に失敗しました。時間をおいてお試しください。';}
   }catch(_){receipt.status='uncertain';receipt.message='通知の結果を確認できません。重複を避けるため、時間をおいて履歴をご確認ください。';}

@@ -1,4 +1,4 @@
-/** GitHub入力画面専用の独立GAS。旧入力用Admin.gs・公開用APIとは混ぜない。 */
+/** GitHub入力画面専用の独立GAS。公開用APIとは混ぜない。 */
 function doGet() {
   return ContentService.createTextOutput('Training editor API. Authentication is required.');
 }

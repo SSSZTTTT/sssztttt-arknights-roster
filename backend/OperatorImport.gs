@@ -147,14 +147,15 @@ function arkImportHeaderMap_(headers, sheetName) {
   return map;
 }
 
-function arkImportReadState_(ss) {
+function arkImportReadState_(ss, includeSnapshot = true) {
   const sheets = ss.getSheets().filter(s => /^\d{4}年$/.test(s.getName()) && Number(s.getName().slice(0,4)) >= ARK_IMPORT.minYear).map(sheet => {
     const lastRow = sheet.getLastRow(), width = sheet.getLastColumn();
     if (!lastRow || !width) throw new Error(sheet.getName() + '：空の年別シートです。見出しを設定してください。');
-    const range = sheet.getRange(1,1,lastRow,width), values = range.getValues(), formulas = range.getFormulas();
+    const range = sheet.getRange(1,1,lastRow,width), values = range.getValues(), formulas = includeSnapshot ? range.getFormulas() : null;
     return { sheet:sheet, name:sheet.getName(), lastRow:lastRow, width:width, values:values, formulas:formulas, headers:values[0], map:arkImportHeaderMap_(values[0],sheet.getName()) };
   });
   const rows = [], names = new Set();
+  let timeZone;
   sheets.forEach(s => s.values.slice(1).forEach((values,i) => {
     const name = arkImportText_(values[s.map['オペレーター名']]);
     if (!name) {
@@ -164,11 +165,14 @@ function arkImportReadState_(ss) {
     if (names.has(name)) throw new Error('シート間で名前が重複しています：' + name);
     names.add(name);
     let date = values[s.map['実装日']];
-    if (date instanceof Date) date = Utilities.formatDate(date, ss.getSpreadsheetTimeZone(), 'yyyy/MM/dd');
+    if (date instanceof Date) {
+      if (timeZone === undefined) timeZone = ss.getSpreadsheetTimeZone();
+      date = Utilities.formatDate(date, timeZone, 'yyyy/MM/dd');
+    }
     else if (typeof date === 'number') date = new Date((date - 25569) * 86400000).toISOString().slice(0,10).replace(/-/g,'/');
     rows.push({ name:name, sheetName:s.name, row:i+2, date:arkImportDate_(date), rarity:Number(values[s.map['レア']]), job:arkImportText_(values[s.map['職業']]) });
   }));
-  return { sheets:sheets, rows:rows, signature:JSON.stringify(sheets.map(s => [s.name,s.values,s.formulas])) };
+  return { sheets:sheets, rows:rows, signature:includeSnapshot ? JSON.stringify(sheets.map(s => [s.name,s.values,s.formulas])) : null };
 }
 
 function arkImportPlan_(source, state) {
@@ -259,7 +263,8 @@ function arkImportApply_(ss, state, plan) {
 }
 
 function arkImportVerify_(ss, plan) {
-  const after = arkImportReadState_(ss);
+  // 反映後は結果の行だけを照合するため、競合チェック用の数式と署名は不要。
+  const after = arkImportReadState_(ss, false);
   for (const op of plan.additions.concat(plan.updates.map(u => u.operator))) {
     const row = after.rows.find(r => r.name === op.name);
     if (!row || row.date !== op.date || row.rarity !== op.rarity || row.job !== op.job) throw new Error('書き込み結果を確認できません：' + op.name + '。シートを確認してください。');

@@ -1,6 +1,6 @@
 /** 公開用・入力用で共通。末尾 _ の関数はgoogle.script.runから呼べません。 */
-function webSpreadsheet_() {
-  var id=PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+function webSpreadsheet_(properties) {
+  var id=properties?properties.SPREADSHEET_ID:PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
   if(!id||!id.trim())throw Error('SPREADSHEET_ID をスクリプトプロパティに設定してください。');
   return SpreadsheetApp.openById(id.trim());
 }
@@ -28,8 +28,8 @@ function webOperator_(row,headers,privateData) {
 function webRoster_(privateData) {
   var ss=webSpreadsheet_(),operators=[],seen=new Set();
   ss.getSheets().filter(s=>/^\d{4}年$/.test(s.getName())).forEach(sheet=>{
-    var last=sheet.getLastRow();if(last<2)return;
-    var values=sheet.getRange(1,1,last,sheet.getLastColumn()).getValues(),headers=webHeaders_(values);
+    var values=sheet.getDataRange().getValues();if(values.length<2)return;
+    var headers=webHeaders_(values);
     values.slice(1).forEach(row=>{
       if(!Ark.name(row[headers.indexOf('オペレーター名')]))return;
       var op=webOperator_(row,headers,privateData);
@@ -48,8 +48,8 @@ function webHistory_(ss) {
 function webFindOperator_(ss,name) {
   var found=null;
   ss.getSheets().filter(s=>/^\d{4}年$/.test(s.getName())).forEach(sheet=>{
-    var last=sheet.getLastRow();if(last<2)return;
-    var values=sheet.getRange(1,1,last,sheet.getLastColumn()).getValues(),headers=webHeaders_(values);
+    var values=sheet.getDataRange().getValues();if(values.length<2)return;
+    var headers=webHeaders_(values);
     values.slice(1).forEach((row,i)=>{if(Ark.name(row[headers.indexOf('オペレーター名')])===name){if(found)throw Error('同名の行が重複しています。');found={sheet:sheet,row:i+2,headers:headers,values:row};}});
   });
   if(!found)throw Error('オペレーターが見つかりません。再読み込みしてください。');return found;

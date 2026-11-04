@@ -51,8 +51,31 @@ test('confirmation expires, is session-bound, and is replaced by a fresh preview
   }
 });
 test('sheet edits after preview stop the import before any new writes',()=>{
-  const f=fixture(),p=f.dispatch('importPreview');f.sheet.cell(2,7).v=15;
-  assert.throws(()=>f.dispatch('importCommit',{planId:p.planId}),/シートが変更/);assert.equal(f.book.writes,0);
+  for(const edit of [cell=>cell.v=15,cell=>cell.f='=14']){
+    const f=fixture(),p=f.dispatch('importPreview');edit(f.sheet.cell(2,7));
+    assert.throws(()=>f.dispatch('importCommit',{planId:p.planId}),/シートが変更/);assert.equal(f.book.writes,0);
+  }
+});
+test('import snapshots read the time zone once and post-write verification skips formulas',()=>{
+  const f=fixture(),date=iso=>vm.runInContext(`new Date('${iso}T00:00:00Z')`,f.c);
+  f.sheet.cell(2,1).v=date('2026-01-01');
+  f.book.add('2025年',[H,[date('2025-01-01'),6,'狙撃','前年']]);
+  f.c.html=html([row('前年','2025/01/01'),row('既存'),row('ア')]);
+  let timeZoneReads=0,formulaReads=0;
+  f.book.getSpreadsheetTimeZone=()=>{timeZoneReads++;return 'Asia/Tokyo';};
+  for(const sheet of f.book.getSheets()){
+    const getRange=sheet.getRange.bind(sheet);
+    sheet.getRange=(...args)=>{
+      const range=getRange(...args),getFormulas=range.getFormulas.bind(range);
+      range.getFormulas=()=>{formulaReads++;return getFormulas();};
+      return range;
+    };
+  }
+  const p=f.dispatch('importPreview');
+  assert.deepEqual([timeZoneReads,formulaReads],[1,2]);
+  assert.equal(p.updates.length,0);
+  assert.equal(f.dispatch('importCommit',{planId:p.planId}).added,1);
+  assert.deepEqual([timeZoneReads,formulaReads],[3,4]);
 });
 test('metadata corrections are shown before confirmation and leave existing skill exceptions intact',()=>{
   const f=fixture();f.c.html=html([row('既存','2026/01/02',5,'術師')]);
