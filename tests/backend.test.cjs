@@ -17,6 +17,92 @@ function fixture(kind='PublicApi'){
   return {ctx,props,row,sheet,ss,writes,notifications,history,opened};
 }
 const input=(id='a',client='b',name='ア')=>({requestId:id.repeat(36),clientId:client.repeat(36),name});
+function batchService(f,read){
+  const calls=[];
+  f.ctx.Sheets={Spreadsheets:{Values:{batchGet(id,options){calls.push({id,options});return read(options);}}}};
+  return calls;
+}
+
+test('batch roster reads all year sheets once and preserves public/private values and save revisions',()=>{
+  const f=fixture('Training');
+  f.row[0]=new Date('2020-01-15T15:00:00Z');f.row[6]='-';f.row[8]='2';f.row[10]='';f.row[14]=false;
+  f.ctx.Utilities.formatDate=v=>new Date(+v+9*3600000).toISOString().slice(0,10);
+  const legacyPublic=f.ctx.webRoster_(false),legacyPrivate=f.ctx.webRoster_(true);
+  const calls=batchService(f,()=>({valueRanges:[{values:[headers.slice(),[...f.row]]}]}));
+  // The API returns numeric serial dates, not Date objects.
+  f.ctx.Sheets.Spreadsheets.Values.batchGet=(id,options)=>{
+    calls.push({id,options});const row=f.row.slice();row[0]=Date.parse('2020-01-16T00:00:00Z')/86400000+25569;
+    return {valueRanges:[{values:[headers.slice(),row]}]};
+  };
+  const before=f.sheet.getDataRange;f.sheet.getDataRange=()=>{throw Error('per-year read must not run');};
+  const pick=r=>JSON.parse(JSON.stringify({operators:r.operators,history:r.history}));
+  const metrics={};
+  assert.deepEqual(pick(f.ctx.webRoster_(false,{metrics})),pick(legacyPublic));
+  const current=f.ctx.webRoster_(true);
+  assert.deepEqual(pick(current),pick(legacyPrivate));
+  assert.equal(calls.length,2);assert.equal(metrics.mode,'batch');
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])),{id:'TEST_ONLY_SHEET',options:{ranges:["'2020年'"],majorDimension:'ROWS',valueRenderOption:'UNFORMATTED_VALUE',dateTimeRenderOption:'SERIAL_NUMBER'}});
+  f.sheet.getDataRange=before;
+  const op=current.operators[0];const saved=f.ctx.webSaveTraining_({name:op.name,version:op.version,values:{...op.training,s2:'M3'}});
+  assert.equal(saved.skills[1],'M3');assert.equal(saved.potential,'-');
+  assert.throws(()=>f.ctx.webSaveTraining_({name:op.name,version:op.version,values:op.training}),/別の画面/);
+});
+
+test('batch discovers new years each time, skips other sheets and handles omitted trailing cells',()=>{
+  const f=fixture();let years=['2020年','2021年','集計','2022年','2023年','2024年'];
+  f.ss.getSheets=()=>years.map(name=>({getName:()=>name,getDataRange(){throw Error('not used');}}));
+  const headersReordered=[...headers].reverse();
+  let rows=[{values:[headers.slice(),f.row.slice()]},{},{values:[headers.slice()]},{values:[headers.slice(),[],['2023-01-01',4,'医療','追加',2,70]]},{values:[headersReordered,[...f.row.slice(0,3),'別名',...f.row.slice(4)].reverse()]}];
+  const calls=batchService(f,()=>({valueRanges:rows}));
+  const roster=f.ctx.webRoster_(true);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0].options.ranges)),["'2020年'","'2021年'","'2022年'","'2023年'","'2024年'"]);
+  assert.deepEqual(Array.from(roster.operators,o=>o.name),['ア','追加','別名']);
+  assert.equal(roster.operators[1].owned,false);assert.equal(roster.operators[1].potential,null);
+  assert.equal(roster.operators[1].training.s1,'');assert.equal(roster.operators[1].training.alpha,'');
+  assert.equal(roster.operators[2].potential,18);
+  years.push('2025年');rows.push({values:[headers.slice(),['2025-01-01',2,'先鋒','新年度','-',30,6,'-','-','-','-','-','-','-',true]]});
+  assert.equal(f.ctx.webRoster_(false).operators.length,4);assert.equal(calls[1].options.ranges.length,6);
+  years=[];rows=[];assert.equal(f.ctx.webRoster_(false).operators.length,0);assert.equal(calls.length,2);
+});
+
+test('batch keeps duplicate/header checks and does not hide API failures with partial or stale data',()=>{
+  const f=fixture();let response={valueRanges:[{values:[headers.slice(),f.row.slice(),f.row.slice()]}]};
+  batchService(f,()=>response);
+  assert.throws(()=>f.ctx.webRoster_(false),/重複/);
+  response={valueRanges:[{values:[['名前'],['ア']]}]};assert.throws(()=>f.ctx.webRoster_(true),/見出し/);
+  for(const bad of [null,{}, {valueRanges:[]},{valueRanges:[null]},{valueRanges:[{values:'bad'}]},{valueRanges:[{values:[123]}]}]){
+    response=bad;assert.throws(()=>f.ctx.webRoster_(false),/取得結果|形式/);
+  }
+  f.sheet.getDataRange=()=>{throw Error('must not retry per sheet');};
+  batchService(f,()=>{throw Error('mock quota');});assert.throws(()=>f.ctx.webRoster_(false),/mock quota/);
+});
+
+test('missing advanced service uses legacy; strict batch and explicit legacy are selectable',()=>{
+  const f=fixture(),metrics={};
+  f.ctx.webRoster_(false,{metrics});assert.equal(metrics.mode,'legacy');
+  f.props.set('ROSTER_READ_MODE','batch');assert.throws(()=>f.ctx.webRoster_(false),/Google Sheets API/);
+  const calls=batchService(f,()=>{throw Error('disabled by legacy mode');});
+  f.props.set('ROSTER_READ_MODE','legacy');f.ctx.webRoster_(false,{metrics});assert.equal(metrics.mode,'legacy');assert.equal(calls.length,0);
+  f.props.set('ROSTER_READ_MODE','typo');assert.throws(()=>f.ctx.webRoster_(false),/ROSTER_READ_MODE/);
+});
+
+test('batch GET remains fresh and never includes private fields or timing diagnostics',()=>{
+  const f=fixture();let calls=0;batchService(f,()=>{calls++;return {valueRanges:[{values:[headers.slice(),f.row.slice()]}]};});
+  const get=()=>JSON.parse(f.ctx.doGet({parameter:{action:'roster',format:'compact'}}).text);
+  const first=get();assert.equal(first.ok,true);assert.equal(first.data.operators[0][6],18);
+  f.row[6]=19;const second=get();assert.equal(second.data.operators[0][6],19);assert.equal(calls,2);
+  assert.deepEqual(Object.keys(second.data).sort(),['format','history','operators','updatedAt','version']);
+  assert.equal(second.data.operators[0].length,10);
+});
+
+test('benchmark reads both paths without writes and returns only timing/counts and equivalence',()=>{
+  const f=fixture();batchService(f,()=>({valueRanges:[{values:[headers.slice(),f.row.slice()]}]}));
+  const results=f.ctx.benchmarkRosterReads_();
+  assert.equal(results.length,4);assert.equal(results[1].sameData,true);assert.equal(results[3].sameData,true);
+  assert.deepEqual(Array.from(results,r=>r.mode),['legacy','batch','batch','legacy']);
+  assert.equal(f.writes.length,0);assert.equal(f.notifications.length,0);
+  assert.doesNotMatch(JSON.stringify(results),/TEST_ONLY_SHEET|training|version|ア/);
+});
 
 test('spreadsheet access uses only the script property and fails closed when missing',()=>{
   const f=fixture();

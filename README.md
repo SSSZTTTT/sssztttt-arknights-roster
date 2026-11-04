@@ -11,6 +11,20 @@
 
 育成入力は GitHub Pages の `/edit/` を開きます。Googleログイン用のOAuthクライアントをGoogle Cloud Consoleで設定し、認証付きGASにシートの読み書きを依頼します。
 
+## GASの一覧一括取得
+
+公開用・GitHub入力用とも、GASの「サービス」から **Google Sheets API（v4、識別子 `Sheets`）** を追加すると、各年のデータを `Sheets.Spreadsheets.Values.batchGet` の1回で取得します。年別シートは毎回検出し、履歴は従来どおり末尾200行から最新50件を取得します。短期キャッシュ・GitHubへのJSON保存・追加のGitHub認証は使いません。本人確認・保存時の最新行照合・数式保護・Wiki取得・Discord通知は維持します。
+
+- Sheetsサービスが未追加なら従来方式で動きます。追加済みでAPI呼び出しが失敗した場合は、二重読み取りをせずエラーを返します。
+- 任意のスクリプトプロパティ `ROSTER_READ_MODE` は `auto`（未設定時）、`batch`（一括取得必須）、`legacy`（従来方式へ戻す）です。公開用・入力用の両プロジェクトに個別に適用します。
+- 生成する `gas/*/appsscript.json` にはSheetsサービス設定を含みます。既存のコンテナバインドGASは独自の設定を消さないよう、マニフェスト全体の上書きではなくサービス追加を使ってください。
+- GASに紐づくデフォルトCloudプロジェクトではサービス追加時にAPIも自動で有効化されます。標準Cloudプロジェクトを指定している場合は、そのプロジェクトでGoogle Sheets APIも有効にします。Googleログイン用プロジェクトへGASを付け替える必要はありません。[公式設定手順](https://developers.google.com/apps-script/guides/services/advanced)
+- コードとサービス設定を保存したら、**公開用・入力用それぞれの既存デプロイを「新バージョン」で更新**します。デプロイURL・実行ユーザー・アクセス権・既存プロパティは変更しません。
+
+GASエディタで `benchmarkRosterReads_` を実行すると、公開用・入力用データを両方式で計4回読み、時間と一致判定を実行ログへ出します。シートへの書き込み・Discord通知は行いません。比較中は編集を控え、`sameData: true` を確認してください。`false` の場合は `ROSTER_READ_MODE=legacy` へ戻して差を調査します。
+
+ログの `setupMs` はシート一覧取得、`readMs` は年別データ取得、`parseMs` は変換、`historyMs` は履歴取得、`totalMs` は合計です。単位はミリ秒。個人情報や育成値はログへ出しません。これはGAS内の計測で、起動待ち・ネットワーク・画面のアニメーション時間は含みません。同一実行内の内部再利用にも影響されるので、数回の比較とWeb画面の実測を併用します。実環境の速度改善はAPI有効化と再デプロイ後に確認が必要です。
+
 ## GitHub版入力ツールの初回設定
 
 入力画面: `https://sssztttt.github.io/sssztttt-arknights-roster/edit/`

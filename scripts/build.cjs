@@ -15,6 +15,7 @@ for(const project of ['public','editor']){
   if(project==='editor')for(const file of ['Training.gs','OperatorImport.gs','ImportApi.gs'])write('gas/editor/'+file,read('backend/'+file));
   write('gas/'+project+'/Code.gs',read('backend/'+({public:'PublicApi',editor:'EditorApi'}[project])+'.gs'));
   const manifest={timeZone:'Asia/Tokyo',runtimeVersion:'V8',exceptionLogging:'STACKDRIVER',oauthScopes:['https://www.googleapis.com/auth/spreadsheets','https://www.googleapis.com/auth/script.external_request']};
+  manifest.dependencies={enabledAdvancedServices:[{userSymbol:'Sheets',serviceId:'sheets',version:'v4'}]};
   if(project==='editor')manifest.webapp={access:'ANYONE_ANONYMOUS',executeAs:'USER_DEPLOYING'};
   write('gas/'+project+'/appsscript.json',JSON.stringify(manifest,null,2));
 }

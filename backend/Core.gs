@@ -25,10 +25,40 @@ function webOperator_(row,headers,privateData) {
   }
   return op;
 }
-function webRoster_(privateData) {
-  var ss=webSpreadsheet_(),operators=[],seen=new Set();
-  ss.getSheets().filter(s=>/^\d{4}年$/.test(s.getName())).forEach(sheet=>{
-    var values=sheet.getDataRange().getValues();if(values.length<2)return;
+/** 各年の値を一括取得する。キャッシュせず、列順・新しい年シートも毎回確認する。 */
+function webReadYears_(years,spreadsheetId,mode) {
+  mode=String(mode||'auto').trim().toLowerCase();
+  if(!['auto','batch','legacy'].includes(mode))throw Error('ROSTER_READ_MODE は auto / batch / legacy を指定してください。');
+  var available=typeof Sheets!=='undefined'&&Sheets.Spreadsheets&&Sheets.Spreadsheets.Values&&typeof Sheets.Spreadsheets.Values.batchGet==='function';
+  if(mode==='batch'&&!available)throw Error('GASのサービスに Google Sheets API（Sheets）を追加してください。');
+  var batch=mode!=='legacy'&&available;
+  if(!batch)return {mode:'legacy',values:years.map(y=>y.sheet.getDataRange().getValues())};
+  if(!years.length)return {mode:'batch',values:[]};
+  // 数値・チェックボックスは型を維持。日付シリアル値は既存のwebDate_で変換する。
+  // シート全体を指定し、列の追加・並べ替えで必要列を取りこぼさない。
+  var result=Sheets.Spreadsheets.Values.batchGet(spreadsheetId,{
+    ranges:years.map(y=>"'"+y.name+"'"),majorDimension:'ROWS',
+    valueRenderOption:'UNFORMATTED_VALUE',dateTimeRenderOption:'SERIAL_NUMBER'
+  });
+  // API障害を空の一覧や別経路での再試行で隠さない。legacyへは設定で戻せる。
+  if(!result||!Array.isArray(result.valueRanges)||result.valueRanges.length!==years.length)throw Error('年別データの取得結果が一致しません。');
+  return {mode:'batch',values:result.valueRanges.map(range=>{
+    if(!range||typeof range!=='object')throw Error('年別データの形式が一致しません。');
+    var rows=range.values===undefined?[]:range.values;
+    if(!Array.isArray(rows)||rows.some(row=>!Array.isArray(row)))throw Error('年別データの形式が一致しません。');
+    return rows;
+  })};
+}
+function webRoster_(privateData,options) {
+  options=options||{};
+  var started=Date.now(),metrics=options.metrics||{},settings=PropertiesService.getScriptProperties().getProperties();
+  var ss=webSpreadsheet_(settings),operators=[],seen=new Set();
+  var years=ss.getSheets().map(sheet=>({sheet:sheet,name:sheet.getName()})).filter(y=>/^\d{4}年$/.test(y.name));
+  metrics.setupMs=Date.now()-started;
+  var step=Date.now(),read=webReadYears_(years,settings.SPREADSHEET_ID.trim(),options.mode||settings.ROSTER_READ_MODE);
+  metrics.mode=read.mode;metrics.readMs=Date.now()-step;step=Date.now();
+  read.values.forEach(values=>{
+    if(values.length<2)return;
     var headers=webHeaders_(values);
     values.slice(1).forEach(row=>{
       if(!Ark.name(row[headers.indexOf('オペレーター名')]))return;
@@ -37,7 +67,28 @@ function webRoster_(privateData) {
       seen.add(op.name);operators.push(op);
     });
   });
-  return {version:2,updatedAt:new Date().toISOString(),operators:operators,history:webHistory_(ss)};
+  metrics.parseMs=Date.now()-step;step=Date.now();
+  // 履歴全体をbatchGetに含めると増え続けるため、従来どおり末尾200行だけ読む。
+  var history=webHistory_(ss);
+  metrics.historyMs=Date.now()-step;metrics.totalMs=Date.now()-started;
+  metrics.years=years.length;metrics.operators=operators.length;metrics.privateData=!!privateData;
+  // 個人情報・シートID・育成値・認証情報はログや公開レスポンスへ追加しない。
+  console.log('[roster timing] '+JSON.stringify(metrics));
+  return {version:2,updatedAt:new Date().toISOString(),operators:operators,history:history};
+}
+/** GASエディタから実行する読み取り専用の比較。末尾_でWeb画面からの直接呼び出しを禁止。 */
+function benchmarkRosterReads_() {
+  var results=[],previous={};
+  // 順序による偏りを減らすため公開/入力で実行順を逆にする。実測は数回比較する。
+  [[false,'legacy'],[false,'batch'],[true,'batch'],[true,'legacy']].forEach(pair=>{
+    var metrics={},roster=webRoster_(pair[0],{mode:pair[1],metrics:metrics});
+    var key=String(pair[0]),snapshot=JSON.stringify({operators:roster.operators,history:roster.history});
+    if(previous[key]!==undefined)metrics.sameData=previous[key]===snapshot;
+    else previous[key]=snapshot;
+    results.push(metrics);
+  });
+  console.log('[roster benchmark] '+JSON.stringify(results));
+  return results;
 }
 function webHistory_(ss) {
   var sheet=ss.getSheetByName('履歴');if(!sheet)return [];
