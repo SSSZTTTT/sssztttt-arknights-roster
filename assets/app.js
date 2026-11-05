@@ -1,6 +1,6 @@
 (async function(){
   'use strict';
-  var T=ArkTransport,admin=T.admin,root=document.getElementById('app'),data=null,view='roster',summaryRarity='',searchOpen=false,filters={query:'',rarity:'',job:'',sort:'level'},dialog=null,selected=null,draft=null,saving=false,dirty=false,remainingUntil=Number(T.storage.get(T.demo?'ark_demo_ct':'ark_ct')||0),initialStarted=performance.now();
+  var T=ArkTransport,admin=T.admin,root=document.getElementById('app'),data=null,view='roster',summaryRarity='',searchOpen=false,filters={query:'',rarity:'',job:'',sort:'level'},dialog=null,selected=null,draft=null,saving=false,dirty=false,remainingUntil=Number(T.storage.get(T.demo?'ark_demo_ct':'ark_ct')||0);
   var rosterSearch,renderedOperators=null,stampFormat,cooldownTimer;
   var icons={support:'<circle cx="12" cy="9" r="3.5"/><path d="M5 11V8a7 7 0 0 1 14 0v5a3 3 0 0 1-3 3h-3M4 22v-2a5 5 0 0 1 5-5m6 1a5 5 0 0 1 5 4v2"/><rect x="3" y="8" width="3" height="5" rx="1"/><rect x="18" y="8" width="3" height="5" rx="1"/>',list:'<path d="M9 6h12M9 12h12M9 18h12M3 6h.01M3 12h.01M3 18h.01"/>',chart:'<path d="M4 20V10m8 10V4m8 16v-7"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5"/><path d="M19 11a7 7 0 0 0-12-6L4 8m1 5a7 7 0 0 0 12 6l3-3"/>',arrow:'<path d="m9 5 7 7-7 7"/>',close:'<path d="m6 6 12 12M18 6 6 18"/>',check:'<path d="m5 12 4 4L19 6"/>',send:'<path d="m21 3-7 18-4-7-7-4 18-7ZM10 14 21 3"/>',lock:'<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/>',edit:'<path d="m14 4 6 6M4 20l4-1L21 6l-4-4L4 15v5Z"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>'};
   function icon(n){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(n==='support'?'<use href="#ark-support-icon"/>':icons[n]||icons.list)+'</svg>';}
@@ -250,31 +250,13 @@
     }
     if(active)cooldownTimer=setTimeout(tick,Math.min(1000,remaining));
   }
-  async function finishInitialLoading(){
-    var loader=root.querySelector('.initial');
-    if(!loader)return;
-    // 即時にデータが返っても、初回の線を描画してから一覧へ切り替える。
-    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-    var started=Number.isFinite(window.ARK_LOADING_STARTED)?window.ARK_LOADING_STARTED:initialStarted;
-    var remaining=Math.max(0,950-(performance.now()-started));
-    if(remaining)await new Promise(resolve=>setTimeout(resolve,remaining));
-    // この関数はデータ取得・形式確認の後だけ呼ばれる。完了時に残りの隙間を閉じる。
-    loader.classList.add('is-completing');
-    var connecting=new Promise(resolve=>setTimeout(resolve,260));
-    // 線が動き始めたフレームを描画してから一覧を準備する。非表示タブではタイマーで続行する。
-    var painted=new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-    var preparing=Promise.race([painted,connecting]).then(()=>{
-      var operators=rosterSearch(filters);
-      return {operators:operators,html:rowMarkup(operators)};
-    });
-    var [,rows]=await Promise.all([connecting,preparing]);
-    if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
-      loader.classList.add('is-ready');
-      await new Promise(resolve=>setTimeout(resolve,180));
-    }
-    return rows;
+  function prepareInitialRows(){
+    if(!root.querySelector('.initial'))return;
+    // データと一覧の準備ができたら、ロード演出の完了を待たずに表示する。
+    var operators=rosterSearch(filters);
+    return {operators:operators,html:rowMarkup(operators)};
   }
-  async function load(refresh){var b=document.getElementById('refresh');if(b)b.disabled=true;try{var loaded=await T.get();if(!loaded||!Array.isArray(loaded.operators)||!Array.isArray(loaded.history))throw Error('取得データの形式が一致しません。');data=loaded;rosterSearch=Ark.prepareSearch(data.operators);shell(await finishInitialLoading());if(refresh)toast('最新の記録に更新しました');}catch(err){if(data){toast(err.message);if(b)b.disabled=false;}else root.innerHTML='<main class="main"><div class="page-heading"><div><p class="eyebrow">ARK RECORD</p><h1>アークナイツ育成記録</h1></div></div><div class="error-box"><h2>記録を読み込めませんでした</h2><p>'+e(err.message)+'</p><button class="secondary" id="retry-load">再読み込み</button></div></main>';var retry=document.getElementById('retry-load');if(retry)retry.onclick=()=>load(false);}}
+  async function load(refresh){var b=document.getElementById('refresh');if(b)b.disabled=true;try{var loaded=await T.get();if(!loaded||!Array.isArray(loaded.operators)||!Array.isArray(loaded.history))throw Error('取得データの形式が一致しません。');data=loaded;rosterSearch=Ark.prepareSearch(data.operators);shell(prepareInitialRows());if(refresh)toast('最新の記録に更新しました');}catch(err){if(data){toast(err.message);if(b)b.disabled=false;}else root.innerHTML='<main class="main"><div class="page-heading"><div><p class="eyebrow">ARK RECORD</p><h1>アークナイツ育成記録</h1></div></div><div class="error-box"><h2>記録を読み込めませんでした</h2><p>'+e(err.message)+'</p><button class="secondary" id="retry-load">再読み込み</button></div></main>';var retry=document.getElementById('retry-load');if(retry)retry.onclick=()=>load(false);}}
   window.addEventListener('beforeunload',ev=>{if(dirty||saving){ev.preventDefault();ev.returnValue='';}});
   await load(false);if(data&&!admin){var previous=await T.recover();if(previous){if(previous.retryAt)setCooldown(previous.retryAt);toast(previous.status==='sent'?'前回のリクエストは送信済みです。':previous.message||'前回の送信結果をご確認ください。');}}
 })();

@@ -49,12 +49,12 @@
     button.disabled=true;status('アカウントを確認しています…');
     try {
       if(response.error||response.state!==challenge.state||!response.code)throw Error('ログインを完了できませんでした。もう一度お試しください。');
-      preloadApplication();
+      auth.hidden=true;app.hidden=false;preloadApplication();
       var s=await rpc('login',{state:challenge.state,bindingSecret:bindingSecret,code:response.code,includeRoster:true});
       if(!s||!/^[a-f0-9]{64}$/.test(s.token)||!Number.isFinite(s.expiresAt)||s.expiresAt<=Date.now())throw Error('ログイン結果を確認できませんでした。');
       storeSession({token:s.token,expiresAt:s.expiresAt});
       await launch(s.roster);
-    }catch(error){status(error.message,true);retry.hidden=false;}
+    }catch(error){auth.hidden=false;app.hidden=true;status(error.message,true);retry.hidden=false;}
   }
   async function authenticated(action,input){
     if(!session)throw Error('ログインしてください。未保存の内容は反映されていません。');
@@ -79,7 +79,7 @@
   }
   async function launch(roster){
     status('Loading');
-    window.ARK_LOADING_STARTED=performance.now();auth.hidden=true;app.hidden=false;
+    auth.hidden=true;app.hidden=false;
     try{
       preloadApplication();
       firstData=validRoster(roster)?roster:await authenticated('read');

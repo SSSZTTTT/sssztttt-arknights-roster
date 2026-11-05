@@ -21,6 +21,29 @@ test('public roster uses compact JSONP and accepts the old format in a single re
   await assert.rejects(f.t.get(),/取得データの形式/);
   assert.equal(f.requests.length,1);
 });
+test('public and editor screens finish loading as soon as data arrives without timers or animation frames',async()=>{
+  const source=fs.readFileSync('src/app.js','utf8'),Ark=require('../src/model.js');
+  for(const admin of [false,true]){
+    const elements=new Map(),timers=[],frames=[];
+    function element(){return {innerHTML:'',textContent:'',hidden:false,classList:{add(){},remove(){},toggle(){}},style:{setProperty(){}},addEventListener(){},setAttribute(){},getBoundingClientRect:()=>({height:72}),querySelector:()=>null,querySelectorAll:()=>[]};}
+    const get=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);};
+    const root=get('app');root.innerHTML=fs.readFileSync('src/loading.html','utf8');
+    root.querySelector=selector=>selector==='.initial'&&root.innerHTML.includes('class="initial"')?element():null;
+    let resolve;const pending=new Promise(r=>resolve=r);
+    const ctx=vm.createContext({Ark,ArkTransport:{admin,demo:false,storage:{get:()=>null},get:()=>pending,recover:async()=>null},console,
+      document:{getElementById:get,querySelector:get,querySelectorAll:()=>[],documentElement:element()},
+      matchMedia:()=>({matches:false,addEventListener(){}}),addEventListener(){},scrollTo(){},ResizeObserver:class{observe(){}disconnect(){}},
+      setTimeout:(callback,delay)=>{timers.push(delay);return timers.length;},clearTimeout(){},requestAnimationFrame:callback=>{frames.push(callback);return frames.length;},performance:{now:()=>0}});
+    ctx.window=ctx;const finished=vm.runInContext(source,ctx);
+    assert.ok(root.querySelector('.initial'));assert.equal(elements.has('roster'),false);
+    resolve({updatedAt:'2026-11-06T00:00:00.000Z',operators:[{name:'テスト',rarity:6,job:'先鋒',owned:true,elite:2,level:90,potential:1,skills:['M3','M3','M3'],modules:['','','','']}],history:[]});
+    await new Promise(setImmediate);
+    assert.equal(root.querySelector('.initial'),null);
+    assert.match(get('roster').innerHTML,/テスト/);
+    assert.deepEqual(timers,[]);assert.deepEqual(frames,[]);
+    await finished;
+  }
+});
 test('opaque POST is followed by receipt polling and only sent status is success',async()=>{
   const f=setup([{status:'pending'},{status:'sent',retryAt:1234}]);const r=await f.t.request('ア');
   assert.equal(r.status,'sent');assert.equal(f.sent.length,1);assert.equal(f.sent[0].mode,'no-cors');assert.equal(f.sent[0].body.get('name'),'ア');assert.equal(f.store.get('ark_pending'),'');

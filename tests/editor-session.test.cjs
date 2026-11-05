@@ -2,7 +2,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),{webcrypto}=require('node:crypto');
 const source=fs.readFileSync('src/editor.js','utf8'),key='ark_editor_session_v1:/edit/',endpoint='https://script.google.com/macros/s/TEST/exec',token='a'.repeat(64);
 const applicationSrc='../assets/app.js?v=fixture';
-function fixture({local=new Map(),legacy=new Map(),readError,readPromise,loginRoster}={}){
+function fixture({local=new Map(),legacy=new Map(),readError,readPromise,loginRoster,loginPromise,loginError}={}){
   const elements=new Map(),calls=[],events={},resources=[],now=1900000000000;let reloads=0;
   let resolveLogin;const loginReady=new Promise(resolve=>{resolveLogin=resolve;});
   function element(tag){return {tag,hidden:false,disabled:false,textContent:'',dataset:{applicationSrc},classList:{toggle(){}},replaceChildren(){}};}
@@ -15,7 +15,7 @@ function fixture({local=new Map(),legacy=new Map(),readError,readPromise,loginRo
     google:{accounts:{oauth2:{initCodeClient:options=>{resolveLogin(options.callback);return {requestCode(){}};}}}},
     EditorRPC:{create:()=>async(action,input,t)=>{
       calls.push({action,token:t,input});
-      if(action==='login')return {token,expiresAt:now+30*86400000,roster:loginRoster};
+      if(action==='login'){if(loginError)throw loginError;return loginPromise||{token,expiresAt:now+30*86400000,roster:loginRoster};}
       if(action==='read'){if(readError)throw readError;return readPromise||{operators:[],history:[],sessionExpiresAt:now+30*86400000};}
       if(action==='prepare')return {origin:'https://owner.github.io',clientId:'test',state:'b'.repeat(64),expiresAt:now+300000};
       if(action==='logout')return {loggedOut:true};
@@ -42,6 +42,38 @@ test('initial roster read failure keeps the issued session and offers a retry',a
   const f=fixture({readError:Error('Network failed')}),complete=await f.loginReady;
   await complete({state:'b'.repeat(64),code:'one-use-google-code'});
   assert.ok(f.local.has(key));assert.equal(f.c.ArkTransport,undefined);assert.equal(f.elements.get('auth-retry').hidden,false);
+  assert.equal(f.elements.get('auth-screen').hidden,false);assert.equal(f.elements.get('app').hidden,true);
+});
+test('new login displays the loader during authentication and consumes the bundled roster',async()=>{
+  let resolve;const loginPromise=new Promise(r=>resolve=r),f=fixture({loginPromise}),complete=await f.loginReady;
+  const completed=complete({state:'b'.repeat(64),code:'one-use-google-code'});
+  assert.equal(f.elements.get('app').hidden,false);assert.equal(f.elements.get('auth-screen').hidden,true);
+  assert.equal(f.c.ArkTransport,undefined);assert.equal(f.local.has(key),false);
+  assert.deepEqual(f.resources.map(node=>node.tag),['link']);
+  const roster={operators:[{name:'ア'}],history:[]};
+  resolve({token,expiresAt:1900000000000+30*86400000,roster});await completed;
+  assert.equal((await f.c.ArkTransport.get()).operators[0].name,'ア');
+  assert.deepEqual(f.calls.map(x=>x.action),['prepare','login']);
+  assert.equal(f.elements.get('auth-screen').hidden,true);
+});
+test('login failure restores the login screen and retry action',async()=>{
+  const f=fixture({loginError:Error('Login failed')}),complete=await f.loginReady;
+  const completed=complete({state:'b'.repeat(64),code:'one-use-google-code'});
+  assert.equal(f.elements.get('app').hidden,false);
+  await completed;
+  assert.equal(f.elements.get('auth-screen').hidden,false);assert.equal(f.elements.get('app').hidden,true);
+  assert.equal(f.elements.get('auth-retry').hidden,false);assert.equal(f.elements.get('auth-message').textContent,'Login failed');
+  assert.equal(f.local.has(key),false);assert.equal(f.c.ArkTransport,undefined);
+  assert.deepEqual(f.resources.map(node=>node.tag),['link']);
+});
+test('old login responses keep the loader visible until the authenticated roster arrives',async()=>{
+  let resolve;const readPromise=new Promise(r=>resolve=r),f=fixture({readPromise}),complete=await f.loginReady;
+  const completed=complete({state:'b'.repeat(64),code:'one-use-google-code'});await f.settle();
+  assert.deepEqual(f.calls.map(x=>x.action),['prepare','login','read']);
+  assert.equal(f.elements.get('app').hidden,false);assert.equal(f.elements.get('auth-screen').hidden,true);
+  assert.equal(f.c.ArkTransport,undefined);assert.deepEqual(f.resources.map(node=>node.tag),['link']);
+  resolve({operators:[],history:[]});await completed;
+  assert.ok(f.c.ArkTransport);assert.equal(f.elements.get('auth-screen').hidden,true);
 });
 test('a new browser page restores persistent login, checks the server and stores its extended deadline',async()=>{
   const local=seed(new Map(),1900000000000-1000),f=fixture({local});await f.settle();
@@ -63,7 +95,7 @@ test('saved-session authentication shows the loader and preloads the editor whil
   let resolve;const pending=new Promise(r=>resolve=r),f=fixture({local:seed(new Map()),readPromise:pending});
   await f.settle();
   assert.equal(f.elements.get('app').hidden,false);assert.equal(f.elements.get('auth-screen').hidden,true);
-  assert.equal(f.c.ArkTransport,undefined);assert.equal(f.c.ARK_LOADING_STARTED,100);
+  assert.equal(f.c.ArkTransport,undefined);
   assert.deepEqual(f.resources.map(node=>[node.tag,node.rel,node.as,node.href]),[['link','preload','script',applicationSrc]]);
   resolve({operators:[],history:[]});await f.settle();
   assert.ok(f.c.ArkTransport);assert.equal(f.elements.get('auth-screen').hidden,true);
