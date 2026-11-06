@@ -252,11 +252,47 @@
   }
   function prepareInitialRows(){
     if(!root.querySelector('.initial'))return;
-    // データと一覧の準備ができたら、ロード演出の完了を待たずに表示する。
+    // 接続完了を示す前に、一覧のカードHTMLまで準備する。
     var operators=rosterSearch(filters);
     return {operators:operators,html:rowMarkup(operators)};
   }
-  async function load(refresh){var b=document.getElementById('refresh');if(b)b.disabled=true;try{var loaded=await T.get();if(!loaded||!Array.isArray(loaded.operators)||!Array.isArray(loaded.history))throw Error('取得データの形式が一致しません。');data=loaded;rosterSearch=Ark.prepareSearch(data.operators);shell(prepareInitialRows());if(refresh)toast('最新の記録に更新しました');}catch(err){if(data){toast(err.message);if(b)b.disabled=false;}else root.innerHTML='<main class="main"><div class="page-heading"><div><p class="eyebrow">ARK RECORD</p><h1>アークナイツ育成記録</h1></div></div><div class="error-box"><h2>記録を読み込めませんでした</h2><p>'+e(err.message)+'</p><button class="secondary" id="retry-load">再読み込み</button></div></main>';var retry=document.getElementById('retry-load');if(retry)retry.onclick=()=>load(false);}}
+  async function finishInitialLoading(loader){
+    if(!loader)return;
+    // 一覧のDOMまで準備してから、黒い画面上で線をつないで完了を示す。
+    loader.classList.add('is-complete');
+    if(document.hidden||window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+    // 固定時間の演出待ちは入れず、つながった線を1フレーム描画して次へ移る。
+    await new Promise(resolve=>{
+      var frame,deadline,done=false;
+      function finish(){if(done)return;done=true;cancelAnimationFrame(frame);clearTimeout(deadline);document.removeEventListener('visibilitychange',visibility);resolve();}
+      function visibility(){if(document.hidden)finish();}
+      document.addEventListener('visibilitychange',visibility);
+      // RAFが抑制された環境の安全弁。通常は描画が先に完了し、このタイマーを取り消す。
+      deadline=setTimeout(finish,50);
+      frame=requestAnimationFrame(()=>{if(!done)frame=requestAnimationFrame(finish);});
+      if(document.hidden)finish();
+    });
+  }
+  async function load(refresh){
+    var b=document.getElementById('refresh'),loader=null,previousData=data,previousSearch=rosterSearch;if(b)b.disabled=true;
+    try{
+      var loaded=await T.get();if(!loaded||!Array.isArray(loaded.operators)||!Array.isArray(loaded.history))throw Error('取得データの形式が一致しません。');
+      data=loaded;rosterSearch=Ark.prepareSearch(data.operators);var initialRows=prepareInitialRows();
+      loader=root.querySelector('.initial');
+      // 黒い画面を保ったまま、その下に一覧のDOMも構築する。mainのIDは新しい一覧に譲る。
+      if(loader){loader.removeAttribute('id');document.body.append(loader);}
+      shell(initialRows);
+      // 必要な一覧レイアウトも黒い画面のうちに確定し、接続後の描画負荷を減らす。
+      if(loader)root.getBoundingClientRect();
+      await finishInitialLoading(loader);
+      if(refresh)toast('最新の記録に更新しました');
+    }catch(err){
+      data=previousData;rosterSearch=previousSearch;
+      if(data){toast(err.message);if(b)b.disabled=false;}
+      else root.innerHTML='<main class="main"><div class="page-heading"><div><p class="eyebrow">ARK RECORD</p><h1>アークナイツ育成記録</h1></div></div><div class="error-box"><h2>記録を読み込めませんでした</h2><p>'+e(err.message)+'</p><button class="secondary" id="retry-load">再読み込み</button></div></main>';
+      var retry=document.getElementById('retry-load');if(retry)retry.onclick=()=>load(false);
+    }finally{if(loader)loader.remove();}
+  }
   window.addEventListener('beforeunload',ev=>{if(dirty||saving){ev.preventDefault();ev.returnValue='';}});
   await load(false);if(data&&!admin){var previous=await T.recover();if(previous){if(previous.retryAt)setCooldown(previous.retryAt);toast(previous.status==='sent'?'前回のリクエストは送信済みです。':previous.message||'前回の送信結果をご確認ください。');}}
 })();

@@ -3,7 +3,8 @@ function webSaveTraining_(payload) {
   if(!payload||typeof payload.name!=='string'||typeof payload.version!=='string')throw Error('保存要求が不正です。');
   var lock=LockService.getScriptLock();if(!lock.tryLock(10000))throw Error('別の保存処理が進行中です。少し待ってください。');
   try{
-    var ss=webSpreadsheet_(),record=webFindOperator_(ss,Ark.name(payload.name)),op=webOperator_(record.values,record.headers,true);
+    var settings=PropertiesService.getScriptProperties().getProperties();
+    var ss=webSpreadsheet_(settings),record=webFindOperator_(ss,Ark.name(payload.name),settings),op=webOperator_(record.values,record.headers,true);
     if(op.version!==payload.version)throw Error('この記録は別の画面で変更されています。編集を閉じて一覧を更新してから、もう一度入力してください。');
     var values=Ark.validate(payload.values,op.rarity),changes=[];
     // 保存直前にも行と版を確認する（シートを直接並べ替えた場合など）。

@@ -70,7 +70,7 @@ function receiveSupport_(input) {
     }
     // 表に実在する全オペレーターが対象。未所持を理由に除外しない。
     ss=webSpreadsheet_(settings);
-    var record=webFindOperator_(ss,Ark.name(input.name));input.name=Ark.name(record.values[record.headers.indexOf('オペレーター名')]);
+    var record=webFindOperator_(ss,Ark.name(input.name),settings);input.name=Ark.name(record.values[record.headers.indexOf('オペレーター名')]);
     var raw=settings.ARK_SUPPORT_GUARD,guard=raw?JSON.parse(raw):null;
     var reserved=supportReserve_(guard,input,now,Utilities.formatDate(new Date(now),'Asia/Tokyo','yyyy-MM-dd'),supportLimits_(settings));
     receipt=Object.assign({createdAt:now},reserved.receipt);props.setProperty('ARK_SUPPORT_GUARD',JSON.stringify(reserved.guard));props.setProperty(key,JSON.stringify(receipt));

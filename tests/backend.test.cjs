@@ -168,8 +168,39 @@ test('roster and operator lookup read one data range per year and retain history
   f.ss.getSheetByName=()=>({getLastRow:()=>1,getRange(){throw Error('empty history must not be read');}});assert.equal(f.ctx.webHistory_(f.ss).length,0);
 });
 
+test('batch operator lookup preserves sheet and row identity, reordered columns and omitted blank cells',()=>{
+  const f=fixture(),order=[headers[14],...headers.slice(0,14)],target=f.row.slice();target[3]='対象';target[4]=0;target[14]=false;target.fill('',10,14);
+  const row=[target[14],...target.slice(0,14)];
+  const tables=new Map([['2020年',[headers.slice(),f.row.slice()]],['2021年',[]],['2022年',[['旧見出し']]],['2026年',[order,[],row.slice(0,11)]]]);
+  const makeSheet=name=>({getName:()=>name,getDataRange(){throw Error('per-year read must not run');}});
+  const year=makeSheet('2026年'),years=[makeSheet('2020年'),makeSheet('集計'),makeSheet('2021年'),makeSheet('2022年'),year];
+  f.ss.getSheets=()=>years;
+  const calls=batchService(f,options=>({valueRanges:options.ranges.map(name=>({values:tables.get(name.slice(1,-1))}))}));
+  const found=f.ctx.webFindOperator_(f.ss,'対象');
+  assert.equal(found.sheet,year);assert.equal(found.row,3);
+  assert.deepEqual(Array.from(found.headers),order);assert.deepEqual(Array.from(found.values),row);
+  assert.equal(f.ctx.webOperator_(found.values,found.headers,true).version,f.ctx.webOperator_(target,headers,true).version);
+  assert.deepEqual(Array.from(calls[0].options.ranges),["'2020年'","'2021年'","'2022年'","'2026年'"]);
+  const added=makeSheet('2027年');years.push(added);tables.set('2027年',[headers.slice(),[...f.row.slice(0,3),'新年度',...f.row.slice(4)]]);
+  assert.equal(f.ctx.webFindOperator_(f.ss,'新年度').sheet,added);assert.equal(calls.length,2);
+  tables.set('2027年',[headers.slice(),target]);assert.throws(()=>f.ctx.webFindOperator_(f.ss,'対象'),/重複/);
+  tables.set('2027年',[['名前'],['別名']]);assert.throws(()=>f.ctx.webFindOperator_(f.ss,'対象'),/見出し/);
+  years.splice(0);assert.throws(()=>f.ctx.webFindOperator_(f.ss,'対象'),/見つかりません/);assert.equal(calls.length,4);
+});
+
+test('lookup modes retain legacy support and batch failures never retry individual year reads',()=>{
+  const f=fixture();assert.equal(f.ctx.webFindOperator_(f.ss,'ア').row,2);
+  f.props.set('ROSTER_READ_MODE','batch');assert.throws(()=>f.ctx.webFindOperator_(f.ss,'ア'),/Google Sheets API/);
+  const calls=batchService(f,()=>{throw Error('mock batch unavailable');});
+  f.props.set('ROSTER_READ_MODE','legacy');assert.equal(f.ctx.webFindOperator_(f.ss,'ア').row,2);assert.equal(calls.length,0);
+  f.props.set('ROSTER_READ_MODE','auto');f.sheet.getDataRange=()=>{throw Error('must not retry per year');};
+  assert.throws(()=>f.ctx.webFindOperator_(f.ss,'ア'),/mock batch unavailable/);assert.equal(calls.length,1);
+});
+
 test('support sends once, disables mentions, writes history only after Discord success',()=>{
   const f=fixture(),properties=f.ctx.PropertiesService.getScriptProperties();
+  const calls=batchService(f,()=>({valueRanges:[{values:[headers.slice(),f.row.slice()]}]}));
+  f.sheet.getDataRange=()=>{throw Error('per-year read must not run');};
   const getProperties=properties.getProperties,getProperty=properties.getProperty;
   let snapshots=0,individualReads=0;
   properties.getProperties=()=>{snapshots++;return getProperties();};
@@ -179,11 +210,26 @@ test('support sends once, disables mentions, writes history only after Discord s
   assert.equal(receipt.status,'sent');assert.equal(receipt.retryAt-receipt.createdAt,45000);
   assert.equal(snapshots,1);assert.equal(individualReads,0);
   assert.equal(f.ctx.receiveSupport_(input()).status,'sent');
+  assert.equal(calls.length,1);
   assert.deepEqual(f.opened,['TEST_ONLY_SHEET']);
   assert.equal(f.notifications.length,1);assert.equal(f.history.length,1);
   assert.match(f.notifications[0].url,/\?wait=true$/);
   assert.deepEqual(JSON.parse(f.notifications[0].opts.payload).allowed_mentions,{parse:[]});
   assert.equal(f.ctx.supportReceipt_('a'.repeat(36)).status,'sent');
+});
+
+test('invalid or failed batch support lookup never notifies or reserves the request',()=>{
+  for(const kind of ['missing','duplicate','header','failed']){
+    const f=fixture();f.sheet.getDataRange=()=>{throw Error('must not retry per year');};
+    const calls=batchService(f,()=>{
+      if(kind==='failed')throw Error('mock batch unavailable');
+      return {valueRanges:[{values:kind==='header'?[['名前'],['ア']]:[headers.slice(),f.row.slice(),...(kind==='duplicate'?[f.row.slice()]:[])]}]};
+    });
+    assert.throws(()=>f.ctx.receiveSupport_(input('a','b',kind==='missing'?'不在':'ア')));
+    assert.equal(calls.length,1);assert.equal(f.notifications.length,0);assert.equal(f.history.length,0);
+    assert.equal(f.props.has('ARK_SUPPORT_GUARD'),false);assert.equal(f.props.has('ARK_RECEIPT_'+'a'.repeat(36)),false);
+    assert.equal(f.ctx.released,true);
+  }
 });
 test('rotating client cannot bypass same-operator cooldown; global and daily guards apply',()=>{
   const f=fixture(),c=f.ctx,limits={cooldown:180000,global:15000,daily:2};
@@ -246,6 +292,51 @@ test('private save updates only changed editable cells, retains excess potential
   assert.equal(saved.potential,19);assert.equal(saved.skills[1],'M2');assert.equal(saved.name,'ア');assert.equal(f.ctx.released,true);
   assert.deepEqual(f.row.slice(0,6),before.slice(0,6));assert.deepEqual(f.writes.map(w=>w.c),[7,9]);assert.notEqual(saved.version,op.version);
   assert.throws(()=>f.ctx.webSaveTraining_({name:op.name,version:op.version,values:op.training}),/別の画面/);
+});
+
+test('batch save searches once with one settings snapshot and preserves fresh-row checks and changed-column writes',()=>{
+  const f=fixture('Training'),op=f.ctx.webOperator_(f.row,headers,true),properties=f.ctx.PropertiesService.getScriptProperties();
+  let snapshots=0,currentReads=0;const getProperties=properties.getProperties,getRange=f.sheet.getRange;
+  properties.getProperties=()=>{snapshots++;return getProperties();};
+  properties.getProperty=()=>{throw Error('settings must be reused');};
+  f.sheet.getDataRange=()=>{throw Error('per-year read must not run');};
+  f.sheet.getRange=(...args)=>{const range=getRange(...args),getValues=range.getValues;range.getValues=()=>{currentReads++;return getValues();};return range;};
+  const calls=batchService(f,()=>{const row=f.row.slice();row[0]=Date.parse('2020-01-16T00:00:00Z')/86400000+25569;return {valueRanges:[{values:[headers.slice(),row]}]};});
+  const saved=f.ctx.webSaveTraining_({name:op.name,version:op.version,values:{...op.training,potential:19,s2:'M2'}});
+  assert.equal(calls.length,1);assert.equal(snapshots,1);assert.equal(currentReads,2);
+  assert.equal(saved.date,'2020-01-16');assert.equal(saved.potential,19);assert.equal(saved.skills[1],'M2');
+  assert.deepEqual(f.writes.map(w=>w.c),[7,9]);assert.equal(f.ctx.released,true);
+});
+
+test('batch save pads omitted blank cells without creating writes or checking unchanged formulas',()=>{
+  const f=fixture('Training'),order=[headers[14],...headers.slice(0,14)];f.row.fill('',10,14);
+  const current=[f.row[14],...f.row.slice(0,14)],op=f.ctx.webOperator_(current,order,true);let reads=0;
+  f.sheet.getDataRange=()=>{throw Error('per-year read must not run');};
+  f.sheet.getRange=(r,c,h,w)=>{
+    assert.deepEqual([r,c,h,w],[3,1,1,order.length]);
+    return {getValues(){reads++;return [current.slice()];},getFormulas(){throw Error('unchanged formulas must not be read');},setValues(){throw Error('unchanged blank cells must not be written');}};
+  };
+  f.ctx.SpreadsheetApp.flush=()=>{throw Error('unchanged save must not flush');};
+  const calls=batchService(f,()=>({valueRanges:[{values:[order,[],current.slice(0,11)]}]}));
+  const saved=f.ctx.webSaveTraining_({name:op.name,version:op.version,values:op.training});
+  assert.equal(saved.version,op.version);assert.equal(reads,1);assert.equal(calls.length,1);assert.equal(f.writes.length,0);
+});
+
+test('batch save still rejects stale edits, row movement, formulas, duplicates and unavailable reads before writing',()=>{
+  for(const kind of ['stale','row-change','formula','duplicate','failed']){
+    const f=fixture('Training'),op=f.ctx.webOperator_(f.row,headers,true),getRange=f.sheet.getRange;
+    f.sheet.getDataRange=()=>{throw Error('must not retry per year');};
+    if(kind==='stale')f.row[6]=20;
+    if(kind==='formula')f.sheet.formula=6;
+    if(kind==='row-change')f.sheet.getRange=(...args)=>{const range=getRange(...args);range.getValues=()=>{const row=f.row.slice();row[3]='移動後の別人';return [row];};return range;};
+    const calls=batchService(f,()=>{
+      if(kind==='failed')throw Error('mock batch unavailable');
+      return {valueRanges:[{values:[headers.slice(),f.row.slice(),...(kind==='duplicate'?[f.row.slice()]:[])]}]};
+    });
+    const pattern={'stale':/別の画面/,'row-change':/保存前に行が変更/,'formula':/数式/,'duplicate':/重複/,'failed':/mock batch unavailable/}[kind];
+    assert.throws(()=>f.ctx.webSaveTraining_({name:op.name,version:op.version,values:{...op.training,potential:19}}),pattern);
+    assert.equal(calls.length,1);assert.equal(f.writes.length,0);assert.equal(f.ctx.released,true);
+  }
 });
 test('private save refuses formulas, duplicate names, and busy locks',()=>{
   const f=fixture('Training'),op=f.ctx.webOperator_(f.row,headers,true),p={name:op.name,version:op.version,values:{...op.training,potential:19}};

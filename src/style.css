@@ -437,6 +437,9 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 .initial-line { display:block;width:50%;height:1px;background:#ead04c;box-shadow:0 0 6px #ead04c55;transform:scaleX(0);animation:initial-connect 950ms cubic-bezier(.2,.65,.3,1) forwards;transform-origin:left center }
 .initial-line:last-child { transform-origin:right center }
 .initial-label { margin:64px 20px 0;color:var(--muted);font-size:12px;letter-spacing:.08em;line-height:1.8 }
+/* 準備完了時に黒い画面のまま接続する。接続用の固定時間・フェードは追加しない。 */
+.initial.is-complete .initial-track { animation:none;opacity:1 }
+.initial.is-complete .initial-line { animation:none!important;transform:scaleX(1) }
 @keyframes initial-connect {
   to { transform:scaleX(.85) }
 }

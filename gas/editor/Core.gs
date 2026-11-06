@@ -96,12 +96,21 @@ function webHistory_(ss) {
   var start=Math.max(2,last-199);
   return sheet.getRange(start,1,last-start+1,2).getValues().filter(r=>r[0]&&r[1]).reverse().slice(0,50).map(r=>({time:r[0] instanceof Date?r[0].toISOString():String(r[0]),name:String(r[1])}));
 }
-function webFindOperator_(ss,name) {
-  var found=null;
-  ss.getSheets().filter(s=>/^\d{4}年$/.test(s.getName())).forEach(sheet=>{
-    var values=sheet.getDataRange().getValues();if(values.length<2)return;
+function webFindOperator_(ss,name,settings) {
+  settings=settings||PropertiesService.getScriptProperties().getProperties();
+  var found=null,years=ss.getSheets().map(sheet=>({sheet:sheet,name:sheet.getName()})).filter(y=>/^\d{4}年$/.test(y.name));
+  var read=webReadYears_(years,String(settings.SPREADSHEET_ID||'').trim(),settings.ROSTER_READ_MODE);
+  read.values.forEach((values,index)=>{
+    if(values.length<2)return;
     var headers=webHeaders_(values);
-    values.slice(1).forEach((row,i)=>{if(Ark.name(row[headers.indexOf('オペレーター名')])===name){if(found)throw Error('同名の行が重複しています。');found={sheet:sheet,row:i+2,headers:headers,values:row};}});
+    values.slice(1).forEach((row,i)=>{
+      if(Ark.name(row[headers.indexOf('オペレーター名')])!==name)return;
+      if(found)throw Error('同名の行が重複しています。');
+      // Sheets APIが省略する末尾の空セルを、getValuesと同じ空文字へ戻す。
+      // 保存時の差分判定で、未変更の空欄を変更扱いにしない。
+      var cells=row.slice();headers.forEach((_,col)=>{if(cells[col]==null)cells[col]='';});
+      found={sheet:years[index].sheet,row:i+2,headers:headers,values:cells};
+    });
   });
   if(!found)throw Error('オペレーターが見つかりません。再読み込みしてください。');return found;
 }
