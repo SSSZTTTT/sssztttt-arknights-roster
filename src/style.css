@@ -1,4 +1,5 @@
 :root { color-scheme:dark;--bg:#0c0c0c;--panel:#171717;--panel2:#202020;--line:#303030;--text:#f2f2f2;--muted:#a3a3a3;--blue:#70b5ff;--blue-deep:#222222;--green:#8ccdbd;--danger:#ffb0a7;--radius:12px;font-family:'Manrope','Noto Sans JP',sans-serif;font-size:14px;color:var(--text);background:var(--bg) }
+.rarity-banded { --rarity-six-pattern:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%208%20160%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20fill%3D%22%23fffff5%22%20fill-opacity%3D%22.94%22%20d%3D%22M1%201.005l0.395%200.395-0.395%200.395-0.395-0.395zM4.4%201.005l0.395%200.395-0.395%200.395-0.395-0.395zM7.8%201.005l0.395%200.395-0.395%200.395-0.395-0.395zM2.7%204.389l0.411%200.411-0.411%200.411-0.411-0.411zM6.1%204.389l0.411%200.411-0.411%200.411-0.411-0.411zM1%207.773l0.427%200.427-0.427%200.427-0.427-0.427zM4.4%207.773l0.427%200.427-0.427%200.427-0.427-0.427zM7.8%207.773l0.427%200.427-0.427%200.427-0.427-0.427zM2.7%2011.157l0.443%200.443-0.443%200.443-0.443-0.443zM6.1%2011.157l0.443%200.443-0.443%200.443-0.443-0.443zM1%2014.541l0.459%200.459-0.459%200.459-0.459-0.459zM4.4%2014.541l0.459%200.459-0.459%200.459-0.459-0.459zM7.8%2014.541l0.459%200.459-0.459%200.459-0.459-0.459zM2.7%2017.926l0.474%200.474-0.474%200.474-0.474-0.474zM6.1%2017.926l0.474%200.474-0.474%200.474-0.474-0.474zM1%2021.31l0.49%200.49-0.49%200.49-0.49-0.49zM4.4%2021.31l0.49%200.49-0.49%200.49-0.49-0.49zM7.8%2021.31l0.49%200.49-0.49%200.49-0.49-0.49zM2.7%2024.694l0.506%200.506-0.506%200.506-0.506-0.506zM6.1%2024.694l0.506%200.506-0.506%200.506-0.506-0.506zM1%2028.078l0.522%200.522-0.522%200.522-0.522-0.522zM4.4%2028.078l0.522%200.522-0.522%200.522-0.522-0.522zM7.8%2028.078l0.522%200.522-0.522%200.522-0.522-0.522zM2.7%2031.463l0.537%200.537-0.537%200.537-0.537-0.537zM6.1%2031.463l0.537%200.537-0.537%200.537-0.537-0.537zM1%2034.847l0.553%200.553-0.553%200.553-0.553-0.553zM4.4%2034.847l0.553%200.553-0.553%200.553-0.553-0.553zM7.8%2034.847l0.553%200.553-0.553%200.553-0.553-0.553zM2.7%2038.231l0.569%200.569-0.569%200.569-0.569-0.569zM6.1%2038.231l0.569%200.569-0.569%200.569-0.569-0.569zM1%2041.615l0.585%200.585-0.585%200.585-0.585-0.585zM4.4%2041.615l0.585%200.585-0.585%200.585-0.585-0.585zM7.8%2041.615l0.585%200.585-0.585%200.585-0.585-0.585zM2.7%2044.999l0.601%200.601-0.601%200.601-0.601-0.601zM6.1%2044.999l0.601%200.601-0.601%200.601-0.601-0.601zM1%2048.384l0.616%200.616-0.616%200.616-0.616-0.616zM4.4%2048.384l0.616%200.616-0.616%200.616-0.616-0.616zM7.8%2048.384l0.616%200.616-0.616%200.616-0.616-0.616zM2.7%2051.768l0.632%200.632-0.632%200.632-0.632-0.632zM6.1%2051.768l0.632%200.632-0.632%200.632-0.632-0.632zM1%2055.152l0.648%200.648-0.648%200.648-0.648-0.648zM4.4%2055.152l0.648%200.648-0.648%200.648-0.648-0.648zM7.8%2055.152l0.648%200.648-0.648%200.648-0.648-0.648zM2.7%2058.536l0.664%200.664-0.664%200.664-0.664-0.664zM6.1%2058.536l0.664%200.664-0.664%200.664-0.664-0.664zM1%2061.921l0.679%200.679-0.679%200.679-0.679-0.679zM4.4%2061.921l0.679%200.679-0.679%200.679-0.679-0.679zM7.8%2061.921l0.679%200.679-0.679%200.679-0.679-0.679zM2.7%2065.305l0.695%200.695-0.695%200.695-0.695-0.695zM6.1%2065.305l0.695%200.695-0.695%200.695-0.695-0.695zM1%2068.689l0.711%200.711-0.711%200.711-0.711-0.711zM4.4%2068.689l0.711%200.711-0.711%200.711-0.711-0.711zM7.8%2068.689l0.711%200.711-0.711%200.711-0.711-0.711zM-0.7%2072.073l0.727%200.727-0.727%200.727-0.727-0.727zM2.7%2072.073l0.727%200.727-0.727%200.727-0.727-0.727zM6.1%2072.073l0.727%200.727-0.727%200.727-0.727-0.727zM1%2075.457l0.743%200.743-0.743%200.743-0.743-0.743zM4.4%2075.457l0.743%200.743-0.743%200.743-0.743-0.743zM7.8%2075.457l0.743%200.743-0.743%200.743-0.743-0.743zM-0.7%2078.842l0.758%200.758-0.758%200.758-0.758-0.758zM2.7%2078.842l0.758%200.758-0.758%200.758-0.758-0.758zM6.1%2078.842l0.758%200.758-0.758%200.758-0.758-0.758zM1%2082.226l0.774%200.774-0.774%200.774-0.774-0.774zM4.4%2082.226l0.774%200.774-0.774%200.774-0.774-0.774zM7.8%2082.226l0.774%200.774-0.774%200.774-0.774-0.774zM-0.7%2085.61l0.79%200.79-0.79%200.79-0.79-0.79zM2.7%2085.61l0.79%200.79-0.79%200.79-0.79-0.79zM6.1%2085.61l0.79%200.79-0.79%200.79-0.79-0.79zM1%2088.994l0.806%200.806-0.806%200.806-0.806-0.806zM4.4%2088.994l0.806%200.806-0.806%200.806-0.806-0.806zM7.8%2088.994l0.806%200.806-0.806%200.806-0.806-0.806zM-0.7%2092.379l0.821%200.821-0.821%200.821-0.821-0.821zM2.7%2092.379l0.821%200.821-0.821%200.821-0.821-0.821zM6.1%2092.379l0.821%200.821-0.821%200.821-0.821-0.821zM1%2095.763l0.837%200.837-0.837%200.837-0.837-0.837zM4.4%2095.763l0.837%200.837-0.837%200.837-0.837-0.837zM7.8%2095.763l0.837%200.837-0.837%200.837-0.837-0.837zM-0.7%2099.147l0.853%200.853-0.853%200.853-0.853-0.853zM2.7%2099.147l0.853%200.853-0.853%200.853-0.853-0.853zM6.1%2099.147l0.853%200.853-0.853%200.853-0.853-0.853zM1%20102.531l0.869%200.869-0.869%200.869-0.869-0.869zM4.4%20102.531l0.869%200.869-0.869%200.869-0.869-0.869zM7.8%20102.531l0.869%200.869-0.869%200.869-0.869-0.869zM-0.7%20105.915l0.885%200.885-0.885%200.885-0.885-0.885zM2.7%20105.915l0.885%200.885-0.885%200.885-0.885-0.885zM6.1%20105.915l0.885%200.885-0.885%200.885-0.885-0.885zM1%20109.3l0.9%200.9-0.9%200.9-0.9-0.9zM4.4%20109.3l0.9%200.9-0.9%200.9-0.9-0.9zM7.8%20109.3l0.9%200.9-0.9%200.9-0.9-0.9zM-0.7%20112.684l0.916%200.916-0.916%200.916-0.916-0.916zM2.7%20112.684l0.916%200.916-0.916%200.916-0.916-0.916zM6.1%20112.684l0.916%200.916-0.916%200.916-0.916-0.916zM1%20116.068l0.932%200.932-0.932%200.932-0.932-0.932zM4.4%20116.068l0.932%200.932-0.932%200.932-0.932-0.932zM7.8%20116.068l0.932%200.932-0.932%200.932-0.932-0.932zM-0.7%20119.452l0.948%200.948-0.948%200.948-0.948-0.948zM2.7%20119.452l0.948%200.948-0.948%200.948-0.948-0.948zM6.1%20119.452l0.948%200.948-0.948%200.948-0.948-0.948zM1%20122.837l0.963%200.963-0.963%200.963-0.963-0.963zM4.4%20122.837l0.963%200.963-0.963%200.963-0.963-0.963zM7.8%20122.837l0.963%200.963-0.963%200.963-0.963-0.963zM-0.7%20126.221l0.979%200.979-0.979%200.979-0.979-0.979zM2.7%20126.221l0.979%200.979-0.979%200.979-0.979-0.979zM6.1%20126.221l0.979%200.979-0.979%200.979-0.979-0.979zM1%20129.605l0.995%200.995-0.995%200.995-0.995-0.995zM4.4%20129.605l0.995%200.995-0.995%200.995-0.995-0.995zM7.8%20129.605l0.995%200.995-0.995%200.995-0.995-0.995zM-0.7%20132.989l1.011%201.011-1.011%201.011-1.011-1.011zM2.7%20132.989l1.011%201.011-1.011%201.011-1.011-1.011zM6.1%20132.989l1.011%201.011-1.011%201.011-1.011-1.011zM1%20136.374l1.026%201.026-1.026%201.026-1.026-1.026zM4.4%20136.374l1.026%201.026-1.026%201.026-1.026-1.026zM7.8%20136.374l1.026%201.026-1.026%201.026-1.026-1.026zM-0.7%20139.758l1.042%201.042-1.042%201.042-1.042-1.042zM2.7%20139.758l1.042%201.042-1.042%201.042-1.042-1.042zM6.1%20139.758l1.042%201.042-1.042%201.042-1.042-1.042zM1%20143.142l1.058%201.058-1.058%201.058-1.058-1.058zM4.4%20143.142l1.058%201.058-1.058%201.058-1.058-1.058zM7.8%20143.142l1.058%201.058-1.058%201.058-1.058-1.058zM-0.7%20146.526l1.074%201.074-1.074%201.074-1.074-1.074zM2.7%20146.526l1.074%201.074-1.074%201.074-1.074-1.074zM6.1%20146.526l1.074%201.074-1.074%201.074-1.074-1.074zM1%20149.91l1.09%201.09-1.09%201.09-1.09-1.09zM4.4%20149.91l1.09%201.09-1.09%201.09-1.09-1.09zM7.8%20149.91l1.09%201.09-1.09%201.09-1.09-1.09zM-0.7%20153.295l1.105%201.105-1.105%201.105-1.105-1.105zM2.7%20153.295l1.105%201.105-1.105%201.105-1.105-1.105zM6.1%20153.295l1.105%201.105-1.105%201.105-1.105-1.105zM1%20156.679l1.121%201.121-1.121%201.121-1.121-1.121zM4.4%20156.679l1.121%201.121-1.121%201.121-1.121-1.121zM7.8%20156.679l1.121%201.121-1.121%201.121-1.121-1.121z%22%2F%3E%3C%2Fsvg%3E") }
 * { box-sizing:border-box }
 body { margin:0 }
 button, input, select { font:inherit;color:inherit }
@@ -50,32 +51,30 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 .sort-select { border:0;background:none;font-size:11px;color:var(--muted);padding:6px 0;max-width:140px }
 .roster { display:grid;gap:10px;border:0;border-radius:0;overflow:visible;background:transparent }
 .roster>.empty { grid-column:1/-1 }
-.oprow { position:relative;width:100%;min-width:0;display:grid;gap:10px;align-items:center;text-align:left;padding:17px 18px;background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden;min-height:91px;transition:background .15s }
+.oprow { position:relative;width:100%;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) 40px;gap:11px 10px;align-items:start;text-align:left;padding:12px 13px 12px 20px;background:var(--panel);border:1px solid #393939;border-radius:7px;overflow:hidden;transition:background .15s }
 .oprow:hover { background:#222222 }
-/* 全端末で帯を短い辺（左右）に濃色から変化させる。格子もCSSだけで描画。 */
-.oprow[data-rarity="6"] { --rarity-band:repeating-linear-gradient(0deg,#fff4cc66 0 .6px,#fff4cc00 .6px 3px),repeating-linear-gradient(90deg,#fff4cc66 0 .6px,#fff4cc00 .6px 3px),linear-gradient(90deg,#c96d10,#edc51e) }
-.oprow[data-rarity="5"] { --rarity-band:linear-gradient(90deg,#bca46c,#e6d39a) }
-.oprow[data-rarity="4"] { --rarity-band:linear-gradient(90deg,#789fc2,#b5d4ed) }
-.oprow[data-rarity="3"] { --rarity-band:linear-gradient(90deg,#0089bd,#22cef2) }
-.oprow[data-rarity="2"] { --rarity-band:linear-gradient(90deg,#a6b91b,#e4ed59) }
-.oprow[data-rarity="1"] { --rarity-band:linear-gradient(90deg,#a8afb8,#f1f3f5) }
-.rarity-banded::before { content:'';position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--rarity-band);pointer-events:none }
+/* ★6は上の橙から下の黄へ。白い四角も下ほど大きくなる静的な模様を使う。 */
+.oprow[data-rarity="6"] { --rarity-band:var(--rarity-six-pattern),linear-gradient(90deg,#713c1238,transparent 90%),linear-gradient(180deg,#df8508 0%,#edb900 52%,#efda0a 100%) }
+.oprow[data-rarity="5"] { --rarity-band:linear-gradient(90deg,#bca46c,#fff0bd) }
+.oprow[data-rarity="4"] { --rarity-band:linear-gradient(90deg,#899fb5,#dfe9f1) }
+.oprow[data-rarity="3"] { --rarity-band:linear-gradient(90deg,#0086b6,#15d3f4) }
+.oprow[data-rarity="2"] { --rarity-band:linear-gradient(90deg,#97ad0d,#dce940) }
+.oprow[data-rarity="1"] { --rarity-band:linear-gradient(90deg,#9ea7b0,#f5f7f9) }
+.rarity-banded::before { content:'';position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--rarity-band);background-size:100% 100%;background-repeat:no-repeat;pointer-events:none }
 /* 全員分のデータとDOMは保持し、画面に近いカードだけをレイアウト・描画する。
    autoは一度描画したカードの実寸を保持する。未描画時の値は内容部分の高さ。
    非対応ブラウザでは通常描画のまま。検索・Tab移動・印刷で内容を失わない。 */
 @supports (content-visibility:auto) and (contain-intrinsic-block-size:auto 1px) {
-  .oprow { content-visibility:auto;contain-intrinsic-block-size:auto 104px }
+  .oprow { content-visibility:auto;contain-intrinsic-block-size:auto 139px }
   @media print {
     .oprow { content-visibility:visible;contain-intrinsic-block-size:none }
   }
 }
 .op-identity { display:flex;align-items:center;gap:12px;min-width:0 }
-.op-name { display:block;font-size:13px;font-weight:600;line-height:1.65;overflow-wrap:anywhere }
+.op-name { display:block;font-size:19px;font-weight:600;line-height:1.5;overflow-wrap:anywhere }
 .op-meta { display:flex;flex-wrap:wrap;gap:7px;margin-top:4px;font-size:10px;color:var(--muted) }
 .stars { position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap }
 .unowned { color:#b0b0b0;background:#2b2b2b;padding:0 4px;border-radius:3px }
-.op-level { font-size:14px }
-.op-level small { font-size:13px;color:var(--muted);font-weight:500;display:block;margin-bottom:4px }
 .skill-pills { display:flex;gap:5px;flex-wrap:wrap }
 .skill-pill { display:flex;align-items:center;gap:4px;border-radius:4px;padding:5px 6px;background:#242424;color:#d4d4d4;font-size:15px;white-space:nowrap }
 .skill-pill b { font-size:10px;color:#9c9c9c }
@@ -182,11 +181,8 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
   .class-tabs { margin-left:-20px;margin-right:-20px;padding-left:12px;padding-right:12px }
   .class-tab { font-size:12px }
   .list-meta { margin:13px 0 10px }
-  .oprow { padding:15px 13px }
   .op-identity { gap:10px }
-  .op-name { font-size:15px }
   .op-meta { font-size:11px;gap:6px;margin-top:0 }
-  .op-level { font-size:15px }
   .skill-pill { font-size:15px;padding:4px 6px }
   .skill-pill b { font-size:10px }
   .module-pill i { margin-right:0 }
@@ -215,7 +211,7 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 @media(max-width:360px) {
   .main { padding-left:14px;padding-right:14px }
   .class-tabs { margin-left:-14px;margin-right:-14px }
-  .oprow { padding:13px 10px }
+  .oprow { padding-right:11px;padding-left:18px }
   .preview-banner a { white-space:normal }
   .summary-switch button { padding:8px }
 }
@@ -224,7 +220,6 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
   .overview { margin-bottom:18px }
   .editor-grid { grid-template-columns:repeat(3,minmax(0,1fr));gap:10px }
   .editor-save button { padding-left:10px;padding-right:10px;white-space:nowrap }
-  .oprow { min-height:108px }
   .summary-table-wrap { overscroll-behavior-x:contain }
 }
 @media(max-width:760px) {
@@ -281,34 +276,32 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
   .top-actions { gap:7px }
   .rarity-filter { min-width:0;width:100%;font-size:12px }
 }
-/* 全端末でカード内を名前・育成情報・スキルの3段にまとめる。潜在は記録値のまま。 */
-.op-potential { font-variant-numeric:tabular-nums;align-self:center }
-.op-potential strong { font-size:15px;font-weight:600 }
-.oprow { grid-template-columns:minmax(0,1fr) 40px;gap:8px;align-items:start }
-.rarity-banded { padding-left:19px }
+/* 名前、昇進・レベル・潜在、スキル3枠＋Modの順に全端末で揃える。 */
 .rarity-banded .op-meta { display:contents }
 .op-identity { grid-column:1;grid-row:1;align-self:center }
 .op-heading { display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px;min-width:0;max-width:100% }
 .op-heading .op-name { min-width:0;max-width:100% }
 .op-meta { align-items:baseline }
-.op-stats { grid-column:1;grid-row:2;display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 16px;min-width:0 }
-.op-level { display:inline-flex;align-items:baseline;gap:10px;max-width:none;text-align:left;white-space:nowrap }
-.op-level small { font-size:13px;margin:0;line-height:1.3 }
-.op-potential { display:inline-flex;align-items:baseline;gap:4px;text-align:left;white-space:nowrap }
-.op-potential small { display:inline;font-size:13px;color:var(--muted);margin:0;font-weight:500 }
-.row-action { grid-column:2;grid-row:1/span 2;justify-content:center;align-self:center;min-height:36px }
+.op-stats { grid-column:1/-1;grid-row:2;display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 19px;min-width:0;font-variant-numeric:tabular-nums }
+.op-stats>span { display:inline-flex;align-items:baseline;gap:4px;white-space:nowrap }
+.op-stats small { display:inline;font-size:14px;color:var(--muted);margin:0;font-weight:500;line-height:1.5 }
+.op-stats strong { font-size:21px;font-weight:600;line-height:1.3 }
+.row-action { grid-column:2;grid-row:1;justify-content:center;align-self:center;min-height:28px }
 .row-action .action-label { display:none }
 .row-action svg { width:24px;height:24px }
-.op-training { grid-column:1/-1;grid-row:3;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border-top:1px solid var(--line);padding-top:4px }
-.op-training .row-skills { padding:0;gap:4px }
-.op-training .module-pills.row-modules { display:flex;align-items:baseline;padding:0;gap:8px;font-size:15px }
-.module-heading { display:inline;font-size:14px;color:var(--muted) }
+.op-training { grid-column:1/-1;grid-row:3;display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(62px,1.1fr);gap:5px;min-width:0;border-top:1px solid #393939;padding-top:10px }
+.op-training .row-skills { display:contents }
+.row-skills .skill-pill, .op-training .module-pills.row-modules { display:grid;justify-items:center;align-content:center;gap:1px;min-width:0;min-height:46px;padding:3px 2px;border:1px solid #3b4147;border-radius:3px;font-size:21px;line-height:1.15;font-variant-numeric:tabular-nums }
+.row-skills .skill-pill b, .row-modules .module-heading { font-size:12px;font-weight:500;line-height:1.25;color:#a7a7a7 }
+.row-skills .skill-pill.absent, .op-training .module-pills.row-modules { background:#1d1d1d;border-color:#393939 }
+.row-skills .skill-pill.unfilled .skill-value { font-size:13px }
+.row-modules .module-values { display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px 6px;min-width:0;color:var(--text) }
+.row-modules .module-pill i { margin-right:0 }
 @media(min-width:761px) {
   /* 実際の一覧幅で列数を決め、メニュー表示中や検索結果が少ない場合もカード幅を保つ。 */
   .roster { grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr)) }
-  .op-training .module-pills.row-modules { font-size:16px }
-  .op-training .module-pill i { margin-right:0 }
 }
+@media(max-width:360px) { .op-stats { column-gap:13px } }
 /* スマホの職業フィルターの高さを抑える。 */
 @media(max-width:760px) {
   .shell .class-tabs { gap:2px 4px;padding-bottom:4px;margin-bottom:8px }
@@ -327,13 +320,6 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 .editor-dialog .editor-grid .field { min-width:0 }
 .editor-dialog .editor-grid label { margin-bottom:5px;white-space:nowrap }
 .editor-dialog .editor-grid input, .editor-dialog .editor-grid select { min-width:0;min-height:40px;height:40px;padding:6px 8px;font-size:16px }
-/* カードの外寸を保ち、スキル欄の内側の余白を文字に使う。 */
-.oprow .skill-pill { font-size:19px;line-height:1.2;padding:4px 5px;gap:3px;min-height:35px }
-.oprow .skill-pill b { font-size:13px;line-height:1.2 }
-@media(max-width:760px) {
-  .oprow .skill-pill { height:35px;padding:0 3px }
-  .oprow .module-heading { line-height:1.2 }
-}
 /* ブランドの2行を同じ大きさにし、統計の項目名・割合も読みやすくする。 */
 .brand-name, .brand-sub { font-size:16px;line-height:1.25;letter-spacing:1.2px;color:var(--text) }
 .brand-sub { font-weight:600;margin-top:3px }
@@ -360,11 +346,7 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
   .list-meta, .sort-select, .list-footer { font-size:13px }
   .list-meta strong { font-size:17px }
   .sort-select { max-width:170px }
-  .op-name { font-size:16px;line-height:1.4 }
   .op-meta { font-size:12px }
-  .op-level { font-size:18px }
-  .op-level small { font-size:14px }
-  .op-potential strong { font-size:18px }
   .module-pills { font-size:18px }
   .row-action { font-size:13px }
   .search input { font-size:16px }
@@ -406,17 +388,10 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 }
 /* スキル・モジュールの英数字はLv表示と同じ書体・太さ・数字幅に統一。 */
 .op-level, .skill-pill, .skill-pill b, .module-pills, .module-pill i, .module-heading { font-family:'Manrope','Noto Sans JP',sans-serif;font-weight:600;font-style:normal;font-variant-numeric:tabular-nums }
-@media(min-width:761px) and (max-width:1100px) {
-  .oprow .skill-pill { padding-left:3px;padding-right:3px }
-}
-@media(max-width:360px) {
-  .oprow .op-training { column-gap:6px }
-  .oprow .op-training .module-pills.row-modules { gap:4px }
-}
 /* 公開カードは情報表示。リクエスト操作はアイコンの周囲だけ。 */
 .public-oprow { cursor:default }
 .public-oprow:hover { background:var(--panel) }
-.public-oprow .support-action { width:40px;height:40px;min-height:40px;padding:6px;justify-content:center;justify-self:center;background:transparent;border-radius:8px }
+.public-oprow .support-action { width:40px;height:40px;min-height:40px;margin:-6px 0;padding:6px;justify-content:center;justify-self:center;background:transparent;border-radius:8px }
 .public-oprow .support-action:hover { background:var(--blue-deep);color:#a6d1ff }
 .public-oprow .support-action svg { flex-shrink:0 }
 /* 初回ロード：1回の小休止を挟んで中央の手前まで進み、準備完了後に残りを接続する。 */

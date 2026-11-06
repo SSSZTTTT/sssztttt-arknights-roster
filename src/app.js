@@ -113,13 +113,13 @@
       renderSummary();
     }
   }
-  function skills(o,cls){return '<div class="skill-pills '+(cls||'')+'">'+o.skills.map((s,i)=>'<span class="skill-pill '+(s==='M3'?'complete':s==='-'?'absent':s===''?'unfilled':'')+'"><b>S'+(i+1)+(cls==='request-skills'?':':'')+'</b> '+(s==='-'?'—':s===''?'未入力':e(s))+'</span>').join('')+'</div>';}
-  function modules(o,cls){var list=o.modules.map((v,i)=>v&&v!=='-'&&v!=='0'?'<span class="module-pill"><i>'+Ark.modules[i]+'</i>'+e(v)+'</span>':'').join('');return '<div class="module-pills '+(cls||'')+'">'+(cls==='row-modules'?'<span class="module-heading">Mod</span>':'')+(list||'<span class="muted">—</span>')+'</div>';}
+  function skills(o,cls){return '<div class="skill-pills '+(cls||'')+'">'+o.skills.map((s,i)=>{var value=s==='-'?'—':s===''?'未入力':e(s);return '<span class="skill-pill '+(s==='M3'?'complete':s==='-'?'absent':s===''?'unfilled':'')+'"><b>S'+(i+1)+(cls==='request-skills'?':':'')+'</b> '+(cls==='row-skills'?'<span class="skill-value">'+value+'</span>':value)+'</span>';}).join('')+'</div>';}
+  function modules(o,cls){var list=o.modules.map((v,i)=>v&&v!=='-'&&v!=='0'?'<span class="module-pill"><i>'+Ark.modules[i]+'</i>'+e(v)+'</span>':'').join('')||'<span class="muted">—</span>';return '<div class="module-pills '+(cls||'')+'">'+(cls==='row-modules'?'<span class="module-heading">Mod</span><span class="module-values">'+list+'</span>':list)+'</div>';}
   function operatorRow(o){
     var rowClass='oprow rarity-banded',rarityAttribute=' data-rarity="'+o.rarity+'"';
     var opening=admin?'<button class="'+rowClass+'"'+rarityAttribute+' data-edit-name="'+e(o.name)+'" aria-label="'+e(o.name)+' 星'+o.rarity+' 育成を編集">':'<article class="'+rowClass+' public-oprow"'+rarityAttribute+' aria-label="'+e(o.name)+'">';
     var identity='<span class="op-identity"><span class="op-heading"><span class="op-name">'+e(o.name)+'</span><span class="stars" role="img" aria-label="星'+o.rarity+'"></span>'+(!o.owned?'<span class="op-meta"><span class="unowned">未所持</span></span>':'')+'</span></span>';
-    var training='<span class="op-stats"><span class="op-level"><small>'+(o.elite==null?'昇進未入力':o.elite===0?'未昇進':'昇進'+o.elite)+'</small>Lv.'+n(o.level)+'</span><span class="op-potential"><small>潜在</small><strong>'+n(o.potential)+'</strong></span></span><span class="op-training">'+skills(o,'row-skills')+modules(o,'row-modules')+'</span>';
+    var training='<span class="op-stats"><span class="op-elite"><small>昇進</small><strong>'+n(o.elite)+'</strong></span><span class="op-level"><small>Lv.</small><strong>'+n(o.level)+'</strong></span><span class="op-potential"><small>潜在</small><strong>'+n(o.potential)+'</strong></span></span><span class="op-training">'+skills(o,'row-skills')+modules(o,'row-modules')+'</span>';
     var action=admin?'<span class="row-action"><span class="action-label">編集</span>'+icon('edit')+'</span>':'<button type="button" class="row-action support-action" data-request-name="'+e(o.name)+'" aria-label="'+e(o.name)+'をリクエスト" title="リクエスト">'+icon('support')+'</button>';
     return opening+identity+training+action+(admin?'</button>':'</article>');
   }
