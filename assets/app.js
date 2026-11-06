@@ -256,10 +256,39 @@
     var operators=rosterSearch(filters);
     return {operators:operators,html:rowMarkup(operators)};
   }
-  function freezeInitialLoading(loader){
+  async function freezeInitialLoading(loader){
     if(!loader||document.hidden||window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
     var lines=Array.from(loader.querySelectorAll('.initial-line'));if(!lines.length)return;
-    // DOMの移動でCSSアニメーションが再開しないよう、先に表示中の位置を固定する。
+    // 描画側の停止が確定してから位置を取得する。重い一覧構築中の先行・巻き戻りを防ぐ。
+    var paused=await new Promise(resolve=>{
+      var frame,deadline,done=false,fallback=false,pauses=[];
+      function finish(synchronized){if(done)return;done=true;cancelAnimationFrame(frame);clearTimeout(deadline);document.removeEventListener('visibilitychange',visibility);resolve(synchronized);}
+      function visibility(){if(document.hidden)finish(false);}
+      function paintFallback(){
+        if(done||fallback)return;fallback=true;
+        lines.forEach(line=>{line.style.animationPlayState='paused';});
+        frame=requestAnimationFrame(()=>{if(!done)frame=requestAnimationFrame(()=>finish(true));});
+      }
+      document.addEventListener('visibilitychange',visibility);
+      // 同期できない環境では古い位置へ戻さず、演出を省略して一覧を表示する。
+      deadline=setTimeout(()=>finish(false),500);
+      try{
+        lines.forEach(line=>{
+          var pending=typeof line.getAnimations==='function'?line.getAnimations().filter(animation=>animation.animationName==='initial-connect'):[];
+          if(!pending.length)throw Error('Loading animation unavailable');
+          pending.forEach(animation=>{
+            animation.pause();
+            // pause前のreadyやcurrentTimeでは、描画側の進行に追いついていないことがある。
+            var ready=animation.ready;if(!ready||typeof ready.then!=='function')throw Error('Loading animation pause unavailable');
+            pauses.push(ready);
+          });
+        });
+        Promise.all(pauses).then(()=>finish(true),paintFallback);
+      }catch(_){Promise.all(pauses).catch(()=>{});paintFallback();}
+      if(document.hidden)finish(false);
+    });
+    if(!paused||document.hidden||window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+    // DOMの移動でCSSアニメーションが再開しないよう、停止済みの位置を固定する。
     var scales=lines.map(line=>{var m=/^matrix(?:3d)?\(([^,]+)/.exec(window.getComputedStyle(line).transform||'none');return m?Math.max(0,Math.min(1,Number(m[1]))):1;});
     lines.forEach((line,i)=>{line.style.transform='scaleX('+scales[i]+')';});
     loader.classList.add('is-finishing');
@@ -316,7 +345,7 @@
     var b=document.getElementById('refresh'),loader=null,previousData=data,previousSearch=rosterSearch;if(b)b.disabled=true;
     try{
       var loaded=await T.get();if(!loaded||!Array.isArray(loaded.operators)||!Array.isArray(loaded.history))throw Error('取得データの形式が一致しません。');
-      loader=root.querySelector('.initial');var loadingMotion=freezeInitialLoading(loader);
+      loader=root.querySelector('.initial');var loadingMotion=await freezeInitialLoading(loader);
       data=loaded;rosterSearch=Ark.prepareSearch(data.operators);var initialRows=prepareInitialRows();
       // 黒い画面を保ったまま、その下に一覧のDOMも構築する。mainのIDは新しい一覧に譲る。
       if(loader){loader.removeAttribute('id');document.body.append(loader);}

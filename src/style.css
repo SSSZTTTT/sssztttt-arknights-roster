@@ -189,6 +189,7 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
   .skill-pills.row-skills { grid-column:1;grid-row:2;padding-left:0;gap:4px }
   .skill-pill { font-size:15px;padding:4px 6px }
   .skill-pill b { font-size:10px }
+  .module-pill i { margin-right:0 }
   .row-action { font-size:10px }
   .module-pills.row-modules { display:none }
   .list-footer { font-size:9px }

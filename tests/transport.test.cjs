@@ -21,8 +21,8 @@ test('public roster uses compact JSONP and accepts the old format in a single re
   await assert.rejects(f.t.get(),/取得データの形式/);
   assert.equal(f.requests.length,1);
 });
-function appFixture({admin=false,reduced=false,hidden=false,failShell=false,transforms=['matrix(0.97, 0, 0, 1, 0, 0)','matrix(0.97, 0, 0, 1, 0, 0)'],animateSupported=true,throwAnimationIndex=-1}={}){
-  const elements=new Map(),timers=[],frames=[],events=new Map(),animations=[],styleReads=[],moveSnapshots=[],completionSnapshots=[],layoutSnapshots=[];
+function appFixture({admin=false,reduced=false,hidden=false,failShell=false,transforms=['matrix(0.97, 0, 0, 1, 0, 0)','matrix(0.97, 0, 0, 1, 0, 0)'],animateSupported=true,throwAnimationIndex=-1,cssAnimations='ready',throwPauseIndex=-1,getAnimationsThrows=false}={}){
+  const elements=new Map(),timers=[],frames=[],events=new Map(),animations=[],pendingAnimations=[],styleReads=[],moveSnapshots=[],completionSnapshots=[],layoutSnapshots=[];
   let now=0;
   const settle=()=>new Promise(setImmediate);
   function element(){const classes=new Set();return {innerHTML:'',textContent:'',hidden:false,attributes:{},children:[],parentElement:null,classList:{add:c=>classes.add(c),remove:c=>classes.delete(c),toggle(){},contains:c=>classes.has(c)},style:{setProperty(){}},addEventListener(){},setAttribute(k,v){this.attributes[k]=v;},removeAttribute(k){delete this.attributes[k];},append(child){if(child.parentElement)child.parentElement.children=child.parentElement.children.filter(c=>c!==child);child.parentElement=this;this.children.push(child);},remove(){this.removed=true;if(this.parentElement)this.parentElement.children=this.parentElement.children.filter(c=>c!==this);this.parentElement=null;},getBoundingClientRect:()=>({height:72}),querySelector:()=>null,querySelectorAll:()=>[]};}
@@ -35,6 +35,24 @@ function appFixture({admin=false,reduced=false,hidden=false,failShell=false,tran
   const document={hidden,getElementById:get,querySelector:selector=>{if(failShell&&selector==='.site-header')throw Error('Render failed');return get(selector);},querySelectorAll:()=>[],documentElement:element(),body:element(),addEventListener:(name,callback)=>events.set(name,callback),removeEventListener:name=>events.delete(name)};
   const lines=transforms.map((transform,index)=>{
     const line=element();line.computedTransform=transform;
+    if(cssAnimations){
+      let resolveReady,rejectReady,ready=Promise.resolve(),settled=true;
+      const animation={animationName:'initial-connect',playState:'running',pending:false,pauseCalls:0,readyReads:[],currentTimeWrites:[],
+        get currentTime(){return 2400;},set currentTime(value){this.currentTimeWrites.push(value);},
+        get ready(){this.readyReads.push(this.pauseCalls);return ready;},
+        pause(){
+          this.pauseCalls++;
+          if(index===throwPauseIndex)throw Error('Pause unavailable');
+          this.pending=true;settled=false;
+          ready=new Promise((resolve,reject)=>{resolveReady=resolve;rejectReady=reject;});
+          if(cssAnimations==='ready')this.settle();
+        },
+        settle(transform){if(transform!==undefined)line.computedTransform=transform;if(!settled){settled=true;this.pending=false;this.playState='paused';resolveReady(this);}},
+        reject(){if(!settled){settled=true;this.pending=false;rejectReady(Error('Pause interrupted'));}}
+      };
+      pendingAnimations.push(animation);
+      line.getAnimations=()=>{if(getAnimationsThrows)throw Error('Animation inspection unavailable');return [animation,{animationName:'unrelated',pause(){throw Error('Unrelated animation must not be paused');}}];};
+    }
     if(animateSupported)line.animate=(keyframes,options)=>{
       if(index===throwAnimationIndex)throw Error('Animation unavailable');
       let resolveFinished,rejectFinished,settled=false;
@@ -83,10 +101,102 @@ function appFixture({admin=false,reduced=false,hidden=false,failShell=false,tran
     assert.ok(frame,'a frame is scheduled');frame.fired=true;frame.callback(now);await settle();
   }
   const paint=async()=>{await paintFrame();await paintFrame();};
-  return {get,root,loader,lines,document,elements,timers,frames,events,animations,styleReads,moveSnapshots,completionSnapshots,layoutSnapshots,finished,resolve,settle,advance,activeTimers,paintFrame,paint,setReducedMotion:value=>{reduced=value;}};
+  return {get,root,loader,lines,document,elements,timers,frames,events,animations,pendingAnimations,styleReads,moveSnapshots,completionSnapshots,layoutSnapshots,finished,resolve,settle,advance,activeTimers,paintFrame,paint,setReducedMotion:value=>{reduced=value;}};
 }
 const displayRoster={updatedAt:'2026-11-06T00:00:00.000Z',operators:[{name:'テスト',rarity:6,job:'先鋒',owned:true,elite:2,level:90,potential:1,skills:['M3','M3','M3'],modules:['','','','']}],history:[]};
 const scaleProgress=transform=>Number(/^(?:matrix(?:3d)?|scaleX)\(([^,)]+)/.exec(transform)[1]);
+async function finishVisibleLoad(f){
+  for(let i=0;!f.animations.length&&!f.loader.removed&&i<4;i++)await f.paintFrame();
+  assert.equal(f.animations.length,2);f.animations.forEach(animation=>animation.finish());await f.settle();
+  const [hold]=f.activeTimers();assert.ok(hold);await f.advance(hold.delay);await f.finished;
+}
+test('public and editor wait for both pending CSS pauses and capture the newer rendered position before building the list',async()=>{
+  for(const admin of [false,true]){
+    const f=appFixture({admin,cssAnimations:true,transforms:['matrix(0.94, 0, 0, 1, 0, 0)','matrix(0.94, 0, 0, 1, 0, 0)']});
+    f.resolve(displayRoster);await f.settle();
+    assert.deepEqual(f.pendingAnimations.map(animation=>animation.pauseCalls),[1,1]);
+    assert.ok(f.pendingAnimations.every(animation=>animation.readyReads.length&&animation.readyReads.every(calls=>calls===1)));
+    assert.equal(f.loader.parentElement,f.root);assert.deepEqual(f.styleReads,[]);assert.deepEqual(f.moveSnapshots,[]);assert.deepEqual(f.layoutSnapshots,[]);
+    assert.equal(f.elements.has('roster'),false);assert.equal(f.loader.classList.contains('is-finishing'),false);assert.deepEqual(f.frames,[]);
+    assert.ok(f.lines.every(line=>line.style.transform===undefined));
+    f.pendingAnimations[0].settle('matrix(0.97, 0, 0, 1, 0, 0)');await f.settle();
+    assert.equal(f.loader.parentElement,f.root);assert.deepEqual(f.styleReads,[]);assert.equal(f.elements.has('roster'),false);
+    f.pendingAnimations[1].settle('matrix(0.97, 0, 0, 1, 0, 0)');await f.settle();
+    assert.equal(f.loader.parentElement,f.document.body);assert.deepEqual(f.lines.map(line=>scaleProgress(line.style.transform)),[.97,.97]);
+    assert.deepEqual(f.moveSnapshots[0].transforms.map(scaleProgress),[.97,.97]);
+    assert.ok(f.pendingAnimations.every(animation=>animation.currentTimeWrites.length===0));
+    await finishVisibleLoad(f);
+    assert.deepEqual(f.animations.map(animation=>scaleProgress(animation.keyframes[0].transform)),[.97,.97]);
+    assert.equal(f.loader.removed,true);assert.equal(f.events.size,0);assert.deepEqual(f.activeTimers(),[]);
+  }
+});
+test('hiding or enabling reduced motion while CSS pauses are pending skips the remaining animation safely',async()=>{
+  for(const hidden of [false,true]){
+    const f=appFixture({cssAnimations:true});f.resolve(displayRoster);await f.settle();
+    if(hidden){f.document.hidden=true;f.events.get('visibilitychange')();}
+    else{f.setReducedMotion(true);f.pendingAnimations.forEach(animation=>animation.settle());}
+    await f.finished;
+    assert.match(f.get('roster').innerHTML,/テスト/);assert.equal(f.loader.removed,true);assert.deepEqual(f.animations,[]);assert.deepEqual(f.frames,[]);
+    assert.equal(f.events.size,0);assert.deepEqual(f.activeTimers(),[]);
+    const moves=f.moveSnapshots.length;f.pendingAnimations.forEach(animation=>animation.settle());await f.advance(1000);
+    assert.equal(f.moveSnapshots.length,moves);assert.deepEqual(f.animations,[]);assert.deepEqual(f.activeTimers(),[]);
+  }
+});
+test('a rejected CSS pause pauses both lines through CSS before falling back and cannot strand the cover',async()=>{
+  const f=appFixture({cssAnimations:true});f.resolve(displayRoster);await f.settle();
+  f.pendingAnimations[0].reject();await f.settle();
+  assert.equal(f.loader.parentElement,f.root);assert.deepEqual(f.styleReads,[]);
+  assert.ok(f.lines.every(line=>line.style.animationPlayState==='paused'));
+  await f.paintFrame();assert.equal(f.loader.parentElement,f.root);assert.deepEqual(f.styleReads,[]);
+  f.lines.forEach(line=>{line.computedTransform='matrix(0.97, 0, 0, 1, 0, 0)';});
+  await f.paintFrame();assert.equal(f.loader.parentElement,f.document.body);await finishVisibleLoad(f);
+  f.pendingAnimations[1].settle();await f.advance(1000);
+  assert.equal(f.moveSnapshots.length,1);assert.equal(f.animations.length,2);
+  assert.equal(f.loader.removed,true);assert.equal(f.events.size,0);assert.deepEqual(f.activeTimers(),[]);
+});
+test('an unresolved CSS pause uses a bounded fallback and late readiness cannot restart the load',async()=>{
+  for(const onePaused of [false,true]){
+    const f=appFixture({cssAnimations:true});f.resolve(displayRoster);await f.settle();
+    if(onePaused){f.pendingAnimations[0].settle();await f.settle();}
+    const [deadline]=f.activeTimers();assert.ok(deadline.delay>0&&deadline.delay<=500);
+    await f.advance(deadline.delay-1);assert.equal(f.loader.parentElement,f.root);assert.deepEqual(f.styleReads,[]);
+    await f.advance(1);await f.finished;assert.equal(f.loader.removed,true);assert.deepEqual(f.animations,[]);assert.deepEqual(f.styleReads,[]);
+    const moves=f.moveSnapshots.length,frames=f.frames.length,animations=f.animations.length;
+    f.pendingAnimations.forEach(animation=>animation.settle());await f.advance(1000);
+    assert.equal(f.moveSnapshots.length,moves);assert.equal(f.frames.length,frames);assert.equal(f.animations.length,animations);
+    assert.equal(f.loader.removed,true);assert.equal(f.events.size,0);assert.deepEqual(f.activeTimers(),[]);
+  }
+});
+test('unavailable CSS animation inspection or pause falls back without blocking the roster',async()=>{
+  for(const options of [{cssAnimations:false},{cssAnimations:true,getAnimationsThrows:true},{cssAnimations:true,throwPauseIndex:0},{cssAnimations:true,throwPauseIndex:1}]){
+    const f=appFixture(options);f.resolve(displayRoster);await f.settle();
+    assert.equal(f.loader.parentElement,f.root);assert.ok(f.lines.every(line=>line.style.animationPlayState==='paused'));
+    assert.deepEqual(f.styleReads,[]);assert.equal(f.elements.has('roster'),false);
+    f.pendingAnimations.forEach(animation=>animation.settle());await f.settle();await finishVisibleLoad(f);
+    assert.equal(f.loader.removed,true);assert.match(f.get('roster').innerHTML,/テスト/);assert.equal(f.events.size,0);assert.deepEqual(f.activeTimers(),[]);
+  }
+});
+test('hiding during the CSS fallback cancels pending frames and ignores late callbacks',async()=>{
+  for(const onePainted of [false,true]){
+    const f=appFixture({cssAnimations:false});f.resolve(displayRoster);await f.settle();
+    if(onePainted)await f.paintFrame();
+    const pendingFrame=f.frames.at(-1),frameCount=f.frames.length;
+    f.document.hidden=true;f.events.get('visibilitychange')();await f.finished;
+    assert.equal(f.loader.removed,true);assert.equal(pendingFrame.cancelled,true);assert.equal(f.events.size,0);assert.deepEqual(f.activeTimers(),[]);
+    pendingFrame.callback();await f.advance(1000);
+    assert.equal(f.frames.length,frameCount);assert.deepEqual(f.styleReads,[]);assert.deepEqual(f.animations,[]);assert.deepEqual(f.activeTimers(),[]);
+  }
+});
+test('a stalled CSS fallback frame skips motion at its deadline and cannot later rebuild the list',async()=>{
+  const f=appFixture({cssAnimations:false});f.resolve(displayRoster);await f.settle();
+  const [deadline]=f.activeTimers(),pendingFrame=f.frames.at(-1);
+  assert.ok(deadline.delay>0&&deadline.delay<=500);
+  await f.advance(deadline.delay);await f.finished;
+  assert.equal(f.loader.removed,true);assert.equal(pendingFrame.cancelled,true);assert.deepEqual(f.styleReads,[]);assert.deepEqual(f.animations,[]);
+  const moves=f.moveSnapshots.length,frames=f.frames.length;
+  pendingFrame.callback();await f.advance(1000);
+  assert.equal(f.moveSnapshots.length,moves);assert.equal(f.frames.length,frames);assert.equal(f.events.size,0);assert.deepEqual(f.activeTimers(),[]);
+});
 test('public and editor prepare the list under black, continue both current line positions, then briefly show the connection',async()=>{
   for(const admin of [false,true]){
     const transforms=['matrix(0.31, 0, 0, 1, 0, 0)','matrix3d(0.46, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)'];
@@ -247,7 +357,7 @@ test('initial list construction failure removes the black cover and shows a retr
   const f=appFixture({failShell:true});f.resolve(displayRoster);await f.finished;
   assert.match(f.root.innerHTML,/記録を読み込めませんでした/);assert.match(f.root.innerHTML,/Render failed/);
   assert.equal(f.loader.removed,true);assert.equal(f.document.body.children.length,0);
-  assert.equal(f.loader.classList.contains('is-complete'),false);assert.deepEqual(f.animations,[]);assert.deepEqual(f.timers,[]);
+  assert.equal(f.loader.classList.contains('is-complete'),false);assert.deepEqual(f.animations,[]);assert.deepEqual(f.activeTimers(),[]);
   assert.equal(typeof f.get('retry-load').onclick,'function');
 });
 test('opaque POST is followed by receipt polling and only sent status is success',async()=>{
