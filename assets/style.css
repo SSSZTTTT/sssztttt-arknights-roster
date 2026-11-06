@@ -301,7 +301,17 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
   .oprow, .table-labels { grid-template-columns:minmax(135px,1.3fr) 65px 42px minmax(140px,1fr) 40px }
 }
 @media(max-width:760px) {
-  .oprow { grid-template-columns:minmax(0,1fr) 40px;gap:8px;align-items:start }
+  .roster { display:grid;gap:10px;border:0;border-radius:0;overflow:visible;background:transparent }
+  .oprow { position:relative;grid-template-columns:minmax(0,1fr) 40px;gap:8px;align-items:start;border:1px solid var(--line);border-radius:9px;background:var(--panel);overflow:hidden }
+  .oprow:last-child { border-bottom:1px solid var(--line) }
+  /* 帯は短い辺（左右）に濃色から変化。格子もCSSだけで描画する。 */
+  .oprow[data-rarity="6"] { --rarity-band:repeating-linear-gradient(0deg,#fff4cc66 0 .6px,#fff4cc00 .6px 3px),repeating-linear-gradient(90deg,#fff4cc66 0 .6px,#fff4cc00 .6px 3px),linear-gradient(90deg,#c96d10,#edc51e) }
+  .oprow[data-rarity="5"] { --rarity-band:linear-gradient(90deg,#bca46c,#e6d39a) }
+  .oprow[data-rarity="4"] { --rarity-band:linear-gradient(90deg,#789fc2,#b5d4ed) }
+  .rarity-banded { padding-left:19px }
+  .rarity-banded::before { content:'';position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--rarity-band);clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),0 100%);pointer-events:none }
+  .rarity-banded .op-meta { display:contents }
+  .rarity-banded .stars { position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap }
   .op-identity { grid-column:1;grid-row:1;align-self:center }
   .op-heading { display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px;min-width:0;max-width:100% }
   .op-heading .op-name { min-width:0;max-width:100% }
