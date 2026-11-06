@@ -370,18 +370,23 @@ test('public and editor direction controls sort, retain tie rules and reset with
     const f=appFixture({admin,reduced:true});f.resolve({...displayRoster,operators});await f.finished;
     const names=()=>[...f.get('roster').innerHTML.matchAll(/class="op-name">([^<]+)</g)].map(match=>match[1]);
     assert.deepEqual(names(),['高レベル','星5','低レベル']);
-    f.get('direction').onchange({target:{value:'asc'}});
+    f.get('direction').onclick();
     assert.deepEqual(names(),['低レベル','星5','高レベル']);
+    assert.equal(f.get('direction').attributes['aria-checked'],'true');
+    assert.equal(f.get('direction-label').textContent,'↑ 昇順');
     f.get('sort').onchange({target:{value:'rarity'}});
     assert.deepEqual(names(),['星5','高レベル','低レベル']);
-    f.get('direction').onchange({target:{value:'desc'}});
+    f.get('direction').onclick();
     assert.deepEqual(names(),['高レベル','低レベル','星5']);
+    assert.equal(f.get('direction').attributes['aria-checked'],'false');
+    assert.equal(f.get('direction-label').textContent,'↓ 降順');
     f.get('rarity').onchange({target:{value:'6'}});
     assert.deepEqual(names(),['高レベル','低レベル']);
-    f.get('direction').onchange({target:{value:'asc'}});
+    f.get('direction').onclick();
     f.get('roster').onclick({target:{closest:()=>({id:'reset-filters'})}});
     assert.deepEqual(names(),['高レベル','星5','低レベル']);
-    assert.match(f.get('screen').innerHTML,/id="direction"[^>]*><option value="desc" selected>/);
+    assert.match(f.get('screen').innerHTML,/id="direction" role="switch" aria-label="昇順で表示" aria-checked="false"/);
+    assert.match(f.get('screen').innerHTML,/id="direction-label">↓ 降順</);
   }
 });
 
