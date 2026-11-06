@@ -256,20 +256,59 @@
     var operators=rosterSearch(filters);
     return {operators:operators,html:rowMarkup(operators)};
   }
-  async function finishInitialLoading(loader){
-    if(!loader)return;
-    // 一覧のDOMまで準備してから、黒い画面上で線をつないで完了を示す。
-    loader.classList.add('is-complete');
-    if(document.hidden||window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
-    // 固定時間の演出待ちは入れず、つながった線を1フレーム描画して次へ移る。
-    await new Promise(resolve=>{
-      var frame,deadline,done=false;
+  function freezeInitialLoading(loader){
+    if(!loader||document.hidden||window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+    var lines=Array.from(loader.querySelectorAll('.initial-line'));if(!lines.length)return;
+    // DOMの移動でCSSアニメーションが再開しないよう、先に表示中の位置を固定する。
+    var scales=lines.map(line=>{var m=/^matrix(?:3d)?\(([^,]+)/.exec(window.getComputedStyle(line).transform||'none');return m?Math.max(0,Math.min(1,Number(m[1]))):1;});
+    lines.forEach((line,i)=>{line.style.transform='scaleX('+scales[i]+')';});
+    loader.classList.add('is-finishing');
+    return {lines:lines,scales:scales};
+  }
+  function waitForInitialLoadingPaint(){
+    return new Promise(resolve=>{
+      var frame,deadline,done=false,paintDeadlineMs=500;
       function finish(){if(done)return;done=true;cancelAnimationFrame(frame);clearTimeout(deadline);document.removeEventListener('visibilitychange',visibility);resolve();}
       function visibility(){if(document.hidden)finish();}
       document.addEventListener('visibilitychange',visibility);
-      // RAFが抑制された環境の安全弁。通常は描画が先に完了し、このタイマーを取り消す。
-      deadline=setTimeout(finish,50);
+      deadline=setTimeout(finish,paintDeadlineMs);
+      // 一覧背面の重い初回描画を先に通し、接続アニメーションの時間を使わせない。
       frame=requestAnimationFrame(()=>{if(!done)frame=requestAnimationFrame(finish);});
+      if(document.hidden)finish();
+    });
+  }
+  async function finishInitialLoading(loader,motion){
+    if(!loader)return;
+    if(!motion||document.hidden||window.matchMedia('(prefers-reduced-motion:reduce)').matches){loader.classList.add('is-complete');return;}
+    await waitForInitialLoadingPaint();
+    if(document.hidden||window.matchMedia('(prefers-reduced-motion:reduce)').matches){loader.classList.add('is-complete');return;}
+    var lines=motion.lines,progress=Math.min(...motion.scales);
+    var finishNearMs=260,finishFarMs=450,connectedHoldMs=80,deadlineGraceMs=120;
+    var duration=Math.round(finishNearMs+(finishFarMs-finishNearMs)*(1-Math.min(progress/.97,1)));
+    await new Promise(resolve=>{
+      var animations=[],deadline,hold,connected=false,done=false;
+      function cancelAnimations(){animations.forEach(animation=>animation.cancel());}
+      function finish(){if(done)return;done=true;clearTimeout(deadline);clearTimeout(hold);document.removeEventListener('visibilitychange',visibility);cancelAnimations();resolve();}
+      function complete(){
+        if(done||connected)return;connected=true;clearTimeout(deadline);
+        lines.forEach(line=>{line.style.transform='scaleX(1)';});
+        loader.classList.add('is-complete');cancelAnimations();
+        hold=setTimeout(finish,connectedHoldMs);
+      }
+      function visibility(){if(document.hidden)finish();}
+      document.addEventListener('visibilitychange',visibility);
+      // 完了イベントが止まる環境でも、黒い画面を保持し続けない。
+      deadline=setTimeout(complete,duration+deadlineGraceMs);
+      try{
+        var completions=lines.map((line,i)=>{
+          // matrix(0,…)からの補間は離散切替になるため、両端を同じscaleX形式にする。
+          var animation=line.animate([{transform:'scaleX('+motion.scales[i]+')'},{transform:'scaleX(1)'}],{duration:duration,easing:'ease-in-out',fill:'forwards'});
+          animations.push(animation);
+          // 後続の開始失敗や非表示化でcancelしても、finishedの拒否を必ず処理する。
+          return Promise.resolve(animation.finished).catch(complete);
+        });
+        Promise.all(completions).then(complete);
+      }catch(_){complete();}
       if(document.hidden)finish();
     });
   }
@@ -277,14 +316,14 @@
     var b=document.getElementById('refresh'),loader=null,previousData=data,previousSearch=rosterSearch;if(b)b.disabled=true;
     try{
       var loaded=await T.get();if(!loaded||!Array.isArray(loaded.operators)||!Array.isArray(loaded.history))throw Error('取得データの形式が一致しません。');
+      loader=root.querySelector('.initial');var loadingMotion=freezeInitialLoading(loader);
       data=loaded;rosterSearch=Ark.prepareSearch(data.operators);var initialRows=prepareInitialRows();
-      loader=root.querySelector('.initial');
       // 黒い画面を保ったまま、その下に一覧のDOMも構築する。mainのIDは新しい一覧に譲る。
       if(loader){loader.removeAttribute('id');document.body.append(loader);}
       shell(initialRows);
       // 必要な一覧レイアウトも黒い画面のうちに確定し、接続後の描画負荷を減らす。
       if(loader)root.getBoundingClientRect();
-      await finishInitialLoading(loader);
+      await finishInitialLoading(loader,loadingMotion);
       if(refresh)toast('最新の記録に更新しました');
     }catch(err){
       data=previousData;rosterSearch=previousSearch;

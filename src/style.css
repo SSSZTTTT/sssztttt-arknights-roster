@@ -431,26 +431,31 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 .public-oprow .support-action { width:40px;height:40px;min-height:40px;padding:6px;justify-content:center;justify-self:center;background:transparent;border-radius:8px }
 .public-oprow .support-action:hover { background:var(--blue-deep);color:#a6d1ff }
 .public-oprow .support-action svg { flex-shrink:0 }
-/* 初回ロード：通信・認証の待ち時間だけ左右の黄色い線を表示する。 */
+/* 初回ロード：小休止を挟んで中央の手前まで進み、準備完了後に残りを接続する。 */
 .initial { position:fixed;inset:0;z-index:100;display:grid;place-items:center;min-height:100dvh;padding:0;overflow:hidden;background:var(--bg) }
-.initial-track { position:absolute;left:0;right:0;top:50%;display:flex;height:1px;animation:initial-breathe 1.8s 950ms ease-in-out infinite alternate }
-.initial-line { display:block;width:50%;height:1px;background:#ead04c;box-shadow:0 0 6px #ead04c55;transform:scaleX(0);animation:initial-connect 950ms cubic-bezier(.2,.65,.3,1) forwards;transform-origin:left center }
+.initial-track { position:absolute;left:0;right:0;top:50%;display:flex;height:1px;animation:initial-breathe 1.8s 1500ms ease-in-out infinite alternate }
+.initial-line { display:block;width:50%;height:1px;background:#ead04c;box-shadow:0 0 6px #ead04c55;transform:scaleX(0);animation:initial-connect 1500ms cubic-bezier(.25,.7,.35,1) forwards;transform-origin:left center }
 .initial-line:last-child { transform-origin:right center }
 .initial-label { margin:64px 20px 0;color:var(--muted);font-size:12px;letter-spacing:.08em;line-height:1.8 }
-/* 準備完了時に黒い画面のまま接続する。接続用の固定時間・フェードは追加しない。 */
-.initial.is-complete .initial-track { animation:none;opacity:1 }
+/* 接続は現在の位置からJSでアニメーションする。待機中の進行を巻き戻さない。 */
+.initial.is-finishing .initial-track, .initial.is-complete .initial-track { animation:none;opacity:1 }
+.initial.is-finishing .initial-line { animation:none!important }
 .initial.is-complete .initial-line { animation:none!important;transform:scaleX(1) }
 @keyframes initial-connect {
-  to { transform:scaleX(.85) }
+  0% { transform:scaleX(0) }
+  24%,34% { transform:scaleX(.4) }
+  55%,64% { transform:scaleX(.72) }
+  80%,87% { transform:scaleX(.9) }
+  100% { transform:scaleX(.97) }
 }
 @keyframes initial-breathe {
   from { opacity:1 }
   to { opacity:.55 }
 }
-/* 線の演出は初回だけ表示。動作軽減時は点滅を省略する。 */
+/* 動作軽減時は待機中の移動・点滅と、接続演出の待機を省略する。 */
 @media(prefers-reduced-motion:reduce) {
   .initial-track { animation:none!important }
-  .initial-line { animation:initial-connect 950ms cubic-bezier(.2,.65,.3,1) forwards!important }
+  .initial-line { animation:none!important;transform:scaleX(.97) }
 }
 /* PCでは上部の操作を残し、カード領域だけをスクロールする。 */
 body:has(#roster) { overflow:hidden }
