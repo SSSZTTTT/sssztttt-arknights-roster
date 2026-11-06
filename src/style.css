@@ -59,7 +59,7 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 @supports (content-visibility:auto) and (contain-intrinsic-block-size:auto 1px) {
   .oprow { content-visibility:auto;contain-intrinsic-block-size:auto 56px }
   @media(max-width:760px) {
-    .oprow { contain-intrinsic-block-size:auto 92px }
+    .oprow { contain-intrinsic-block-size:auto 104px }
   }
   @media print {
     .oprow { content-visibility:visible;contain-intrinsic-block-size:none }
@@ -69,7 +69,9 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 .op-name { display:block;font-size:13px;font-weight:600;line-height:1.65;overflow-wrap:anywhere }
 .op-meta { display:flex;flex-wrap:wrap;gap:7px;margin-top:4px;font-size:10px;color:var(--muted) }
 .stars { color:#c4a376;letter-spacing:1px;font-size:9px }
+.rarity-value { display:none }
 .unowned { color:#b0b0b0;background:#2b2b2b;padding:0 4px;border-radius:3px }
+.op-stats { display:contents }
 .op-level { font-size:14px }
 .op-level small { font-size:13px;color:var(--muted);font-weight:500;display:block;margin-bottom:4px }
 .skill-pills { display:flex;gap:5px;flex-wrap:wrap }
@@ -183,8 +185,8 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
   .roster { border-radius:10px }
   .oprow { padding:15px 13px }
   .op-identity { gap:10px }
-  .op-name { font-size:13px }
-  .op-meta { font-size:9px;gap:6px;margin-top:3px }
+  .op-name { font-size:15px }
+  .op-meta { font-size:11px;gap:6px;margin-top:0 }
   .op-level { font-size:15px }
   .skill-pills.row-skills { grid-column:1;grid-row:2;padding-left:0;gap:4px }
   .skill-pill { font-size:15px;padding:4px 6px }
@@ -218,7 +220,6 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
   .class-tabs { margin-left:-14px;margin-right:-14px }
   .skill-pills.row-skills { padding-left:0 }
   .oprow { padding:13px 10px }
-  .op-name { font-size:12px }
   .preview-banner a { white-space:normal }
   .summary-switch button { padding:8px }
 }
@@ -275,22 +276,9 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
   .class-tab.active:after { left:8px;right:8px }
   .support-action svg { width:26px;height:26px }
 }
-/* スマホの上段は名前・育成段階・操作、下段はスキルとモジュール。 */
+/* PCでは育成情報を列に並べ、スマホでは名前・育成情報・スキルの3段にする。 */
 .op-training { display:contents }
 .module-heading { display:none }
-@media(max-width:760px) {
-  .oprow { gap:10px 8px;align-items:start }
-  .op-identity { align-self:center }
-  .op-level { flex-wrap:wrap;align-items:baseline;gap:3px 6px;align-self:center }
-  .op-level small { font-size:13px;margin:0 }
-  .row-action { justify-content:center;align-self:center;min-height:36px }
-  .row-action .action-label { display:none }
-  .row-action svg { width:24px;height:24px }
-  .op-training { grid-column:1/-1;grid-row:2;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 14px;border-top:1px solid var(--line);padding-top:10px }
-  .op-training .row-skills { padding:0;gap:4px }
-  .op-training .module-pills.row-modules { display:flex;align-items:baseline;padding:0;gap:8px;font-size:15px }
-  .module-heading { display:inline;font-size:11px;color:var(--muted) }
-}
 /* 検索はヘッダーから開き、レアリティは職業ボタン列の末尾へ。 */
 .sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0 }
 .rarity-filter { position:relative;display:flex;align-items:center;justify-content:center;min-width:58px;min-height:44px;border:1px solid var(--line);border-radius:6px;color:var(--blue);background:var(--panel);font-size:13px;flex-shrink:0;align-self:start }
@@ -301,7 +289,7 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
   .top-actions { gap:7px }
   .rarity-filter { min-width:0;width:100%;font-size:12px }
 }
-/* 潜在は記録値をそのまま表示し、スマホでは名前の左に育成情報をまとめる。 */
+/* 潜在は記録値をそのまま表示する。スマホでは名前の下へ育成情報をまとめる。 */
 .op-potential { font-variant-numeric:tabular-nums;align-self:center }
 .op-potential small { display:none }
 .op-potential strong { font-size:15px;font-weight:600 }
@@ -313,13 +301,26 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
   .oprow, .table-labels { grid-template-columns:minmax(135px,1.3fr) 65px 42px minmax(140px,1fr) 40px }
 }
 @media(max-width:760px) {
-  .oprow { grid-template-columns:minmax(28px,max-content) 54px minmax(0,1fr) 32px }
-  .op-potential { grid-column:1;grid-row:1;text-align:center }
-  .op-potential small { display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500 }
-  .op-level { grid-column:2;grid-row:1;display:block;max-width:none;text-align:left }
-  .op-level small { display:block;margin-bottom:4px;line-height:1.3 }
-  .op-identity { grid-column:3;grid-row:1 }
-  .row-action { grid-column:4;grid-row:1 }
+  .oprow { grid-template-columns:minmax(0,1fr) 40px;gap:8px;align-items:start }
+  .op-identity { grid-column:1;grid-row:1;align-self:center }
+  .op-heading { display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px;min-width:0;max-width:100% }
+  .op-heading .op-name { min-width:0;max-width:100% }
+  .op-meta { align-items:baseline }
+  .stars { font-size:12px;letter-spacing:0;white-space:nowrap }
+  .rarity-stars { display:none }
+  .rarity-value { display:inline }
+  .op-stats { grid-column:1;grid-row:2;display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 16px;min-width:0 }
+  .op-level { display:inline-flex;align-items:baseline;gap:10px;max-width:none;text-align:left;white-space:nowrap }
+  .op-level small { font-size:13px;margin:0;line-height:1.3 }
+  .op-potential { display:inline-flex;align-items:baseline;gap:4px;text-align:left;white-space:nowrap }
+  .op-potential small { display:inline;font-size:13px;color:var(--muted);margin:0;font-weight:500 }
+  .row-action { grid-column:2;grid-row:1/span 2;justify-content:center;align-self:center;min-height:36px }
+  .row-action .action-label { display:none }
+  .row-action svg { width:24px;height:24px }
+  .op-training { grid-column:1/-1;grid-row:3;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 14px;border-top:1px solid var(--line);padding-top:10px }
+  .op-training .row-skills { padding:0;gap:4px }
+  .op-training .module-pills.row-modules { display:flex;align-items:baseline;padding:0;gap:8px;font-size:15px }
+  .module-heading { display:inline;font-size:11px;color:var(--muted) }
 }
 /* スマホの職業フィルターの高さを抑える。 */
 @media(max-width:760px) {
