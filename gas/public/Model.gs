@@ -39,10 +39,19 @@ var Ark = (function () {
     hanOrder=hanOrder||new Intl.Collator('zh-u-co-pinyin',{numeric:true});
     return (ah?hanOrder:kanaOrder).compare(an,bn)||(an<bn?-1:an>bn?1:0);
   }
-  function levelOrder(a,b){
-    var rank=v=>v==null||v===''?-1:Number(v);
+  function numericOrder(a,b,direction){
+    var an=number(a),bn=number(b),am=an==null||!Number.isFinite(an),bm=bn==null||!Number.isFinite(bn);
+    if(am!==bm)return am?1:-1;
+    return am?0:(direction==='asc'?an-bn:bn-an);
+  }
+  function textOrder(a,b,direction,compare){
+    var an=text(a),bn=text(b);
+    if(!an!==!bn)return an?-1:1;
+    return an?(direction==='asc'?1:-1)*compare(an,bn):0;
+  }
+  function levelOrder(a,b,direction){
     var jobRank=j=>jobs.includes(j)?jobs.indexOf(j):jobs.length;
-    return rank(b.elite)-rank(a.elite)||rank(b.level)-rank(a.level)||jobRank(a.job)-jobRank(b.job)||compareNames(a.name,b.name);
+    return numericOrder(a.elite,b.elite,direction)||numericOrder(a.level,b.level,direction)||jobRank(a.job)-jobRank(b.job)||compareNames(a.name,b.name);
   }
   function searchName(value){return text(value).toLowerCase().replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-96));}
   function filterOperators(operators,filters,getSearchName){
@@ -52,14 +61,18 @@ var Ark = (function () {
       (!state||state==='owned'&&o.owned||state==='unowned'&&!o.owned||state==='unfinished'&&o.owned&&(!maxed(o)||(o.rarity>=4&&!mastered(o))))
     );
   }
-  function operatorOrder(sort){
-    if(sort==='name')return (a,b)=>compareNames(a.name,b.name);
-    if(sort==='rarity')return (a,b)=>b.rarity-a.rarity||String(b.date||'').localeCompare(String(a.date||''))||compareNames(a.name,b.name);
-    if(sort==='recent')return (a,b)=>String(b.date||'').localeCompare(String(a.date||''))||b.rarity-a.rarity||compareNames(a.name,b.name);
-    return levelOrder;
+  function sortType(sort){return ['level','name','rarity','recent'].includes(sort)?sort:'level';}
+  function sortDirection(sort,direction){return direction==='asc'||direction==='desc'?direction:sort==='name'?'asc':'desc';}
+  function operatorOrder(sort,direction){
+    sort=sortType(sort);direction=sortDirection(sort,direction);
+    // 同値の場合は従来のレベル順へ戻す。昇降を切り替えても職業・同名内の並びを反転しない。
+    if(sort==='name')return (a,b)=>textOrder(a.name,b.name,direction,compareNames)||levelOrder(a,b);
+    if(sort==='rarity')return (a,b)=>numericOrder(a.rarity,b.rarity,direction)||levelOrder(a,b);
+    if(sort==='recent')return (a,b)=>textOrder(a.date,b.date,direction,(an,bn)=>an.localeCompare(bn))||levelOrder(a,b);
+    return (a,b)=>levelOrder(a,b,direction);
   }
   function search(operators,filters){
-    return filterOperators(operators,filters,o=>searchName(o.name)).sort(operatorOrder(filters.sort));
+    return filterOperators(operators,filters,o=>searchName(o.name)).sort(operatorOrder(filters.sort,filters.direction));
   }
   function prepareSearch(operators){
     var snapshot=operators.slice(),orders=new Map(),names=new Map();
@@ -68,9 +81,9 @@ var Ark = (function () {
       return names.get(o);
     }
     return filters=>{
-      var sort=filters.sort||'level';
-      if(!orders.has(sort))orders.set(sort,snapshot.slice().sort(operatorOrder(sort)));
-      return filterOperators(orders.get(sort),filters,normalizedName);
+      var sort=sortType(filters.sort),direction=sortDirection(sort,filters.direction),key=sort+':'+direction;
+      if(!orders.has(key))orders.set(key,snapshot.slice().sort(operatorOrder(sort,direction)));
+      return filterOperators(orders.get(key),filters,normalizedName);
     };
   }
   function validate(values,rarity){

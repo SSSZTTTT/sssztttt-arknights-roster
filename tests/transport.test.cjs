@@ -360,6 +360,31 @@ test('initial list construction failure removes the black cover and shows a retr
   assert.equal(f.loader.classList.contains('is-complete'),false);assert.deepEqual(f.animations,[]);assert.deepEqual(f.activeTimers(),[]);
   assert.equal(typeof f.get('retry-load').onclick,'function');
 });
+test('public and editor direction controls sort, retain tie rules and reset with filters',async()=>{
+  const operators=[
+    {...displayRoster.operators[0],name:'低レベル',level:20},
+    {...displayRoster.operators[0],name:'高レベル',level:90},
+    {...displayRoster.operators[0],name:'星5',rarity:5,level:80}
+  ];
+  for(const admin of [false,true]){
+    const f=appFixture({admin,reduced:true});f.resolve({...displayRoster,operators});await f.finished;
+    const names=()=>[...f.get('roster').innerHTML.matchAll(/class="op-name">([^<]+)</g)].map(match=>match[1]);
+    assert.deepEqual(names(),['高レベル','星5','低レベル']);
+    f.get('direction').onchange({target:{value:'asc'}});
+    assert.deepEqual(names(),['低レベル','星5','高レベル']);
+    f.get('sort').onchange({target:{value:'rarity'}});
+    assert.deepEqual(names(),['星5','高レベル','低レベル']);
+    f.get('direction').onchange({target:{value:'desc'}});
+    assert.deepEqual(names(),['高レベル','低レベル','星5']);
+    f.get('rarity').onchange({target:{value:'6'}});
+    assert.deepEqual(names(),['高レベル','低レベル']);
+    f.get('direction').onchange({target:{value:'asc'}});
+    f.get('roster').onclick({target:{closest:()=>({id:'reset-filters'})}});
+    assert.deepEqual(names(),['高レベル','星5','低レベル']);
+    assert.match(f.get('screen').innerHTML,/id="direction"[^>]*><option value="desc" selected>/);
+  }
+});
+
 test('opaque POST is followed by receipt polling and only sent status is success',async()=>{
   const f=setup([{status:'pending'},{status:'sent',retryAt:1234}]);const r=await f.t.request('ア');
   assert.equal(r.status,'sent');assert.equal(f.sent.length,1);assert.equal(f.sent[0].mode,'no-cors');assert.equal(f.sent[0].body.get('name'),'ア');assert.equal(f.store.get('ark_pending'),'');

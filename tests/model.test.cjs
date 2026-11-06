@@ -80,6 +80,66 @@ test('explicit recent and rarity sorts remain available alongside level sorting'
   assert.equal(Ark.search(list,{sort:'rarity'})[0].name,'高レア');
 });
 
+test('all four sort criteria support both directions without mutating source rows',()=>{
+  const list=[
+    op({name:'ア',rarity:6,elite:1,level:70,date:'2021-01-01'}),
+    op({name:'イ',rarity:4,elite:2,level:10,date:'2024-01-01'}),
+    op({name:'ウ',rarity:5,elite:0,level:30,date:'2019-01-01'}),
+    op({name:'エ',rarity:6,elite:2,level:90,date:'2020-01-01'})
+  ];
+  const original=structuredClone(list);
+  const expected={
+    level:{asc:['ウ','ア','イ','エ'],desc:['エ','イ','ア','ウ']},
+    rarity:{asc:['イ','ウ','エ','ア'],desc:['エ','ア','ウ','イ']},
+    recent:{asc:['ウ','エ','ア','イ'],desc:['イ','ア','エ','ウ']},
+    name:{asc:['ア','イ','ウ','エ'],desc:['エ','ウ','イ','ア']}
+  };
+  for(const [sort,directions] of Object.entries(expected)){
+    for(const [direction,names] of Object.entries(directions)){
+      assert.deepEqual(Ark.search(list,{sort,direction}).map(o=>o.name),names,sort+' '+direction);
+    }
+  }
+  assert.deepEqual(list,original);
+  assert.deepEqual(Ark.search(list,{sort:'name'}),Ark.search(list,{sort:'name',direction:'asc'}));
+  assert.deepEqual(Ark.search(list,{sort:'rarity',direction:'invalid'}),Ark.search(list,{sort:'rarity',direction:'desc'}));
+  assert.deepEqual(Ark.search(list,{sort:'unknown',direction:'asc'}),Ark.search(list,{sort:'level',direction:'asc'}));
+});
+
+test('equal primary values use promotion, level, job and name instead of unrelated criteria',()=>{
+  const tied=[
+    op({name:'オ',elite:1,level:80,job:'先鋒',rarity:6,date:'2026-01-01'}),
+    op({name:'エ',elite:2,level:1,job:'先鋒',rarity:5,date:'2025-01-01'}),
+    op({name:'ウ',elite:2,level:90,job:'前衛',rarity:4,date:'2024-01-01'}),
+    op({name:'イ',elite:2,level:90,job:'先鋒',rarity:3,date:'2023-01-01'}),
+    op({name:'ア',elite:2,level:90,job:'先鋒',rarity:2,date:'2022-01-01'})
+  ];
+  for(const direction of ['asc','desc']){
+    const sameRarity=tied.map(o=>({...o,rarity:6}));
+    const sameDate=tied.map(o=>({...o,date:'2020-01-01'}));
+    assert.deepEqual(Ark.search(sameRarity,{sort:'rarity',direction}).map(o=>o.name),['ア','イ','ウ','エ','オ']);
+    assert.deepEqual(Ark.search(sameDate,{sort:'recent',direction}).map(o=>o.name),['ア','イ','ウ','エ','オ']);
+    const sameName=[op({name:'Ａ',id:'lower',elite:1,level:80}),op({name:'A',id:'higher',elite:2,level:1})];
+    assert.deepEqual(Ark.search(sameName,{sort:'name',direction}).map(o=>o.id),['higher','lower']);
+    const sameLevel=[...Ark.jobs].reverse().map(job=>op({name:job,job}));
+    assert.deepEqual(Ark.search(sameLevel,{sort:'level',direction}).map(o=>o.job),Ark.jobs);
+  }
+});
+
+test('missing sort values stay last in their comparison group for both directions',()=>{
+  const levels=[
+    op({name:'ア',elite:0,level:10}),op({name:'イ',elite:2,level:1}),
+    op({name:'ウ',elite:2,level:null}),op({name:'エ',elite:'',level:90}),
+    op({name:'オ',elite:null,level:null}),op({name:'カ',elite:'invalid',level:5})
+  ];
+  assert.deepEqual(Ark.search(levels,{sort:'level',direction:'asc'}).map(o=>o.name),['ア','イ','ウ','カ','エ','オ']);
+  assert.deepEqual(Ark.search(levels,{sort:'level',direction:'desc'}).map(o=>o.name),['イ','ウ','ア','エ','カ','オ']);
+  for(const [sort,key,low,high] of [['rarity','rarity',2,6],['recent','date','2020-01-01','2026-01-01'],['name','name','ア','イ']]){
+    const list=[op({id:'low',[key]:low}),op({id:'high',[key]:high}),op({id:'missing-low',[key]:'',level:1}),op({id:'missing-high',[key]:null,level:80})];
+    assert.deepEqual(Ark.search(list,{sort,direction:'asc'}).map(o=>o.id),['low','high','missing-high','missing-low'],sort+' asc');
+    assert.deepEqual(Ark.search(list,{sort,direction:'desc'}).map(o=>o.id),['high','low','missing-high','missing-low'],sort+' desc');
+  }
+});
+
 test('prepared roster searches preserve all sort and filter modes across repeated searches',()=>{
   const operators=[
     op({name:'W',rarity:6,date:'2020-01-01',job:'狙撃',owned:false}),
@@ -88,13 +148,17 @@ test('prepared roster searches preserve all sort and filter modes across repeate
     op({name:'エイヤフィヤトラ',rarity:6,date:'2020-01-01',job:'術師',level:90})
   ];
   const search=Ark.prepareSearch(operators);
-  for(const sort of ['level','name','recent','rarity']){
-    for(const filters of [{},{query:'ｗ'},{query:'あーみや'},{job:'術師'},{rarity:'6'},
-      {state:'owned'},{state:'unowned'},{state:'unfinished'},{query:'い',rarity:'6',job:'術師'}]){
-      const request={...filters,sort};
-      assert.deepEqual(search(request),Ark.search(operators,request));
+  for(const sort of ['level','name','recent','rarity','unknown']){
+    for(const direction of [undefined,'asc','desc','asc','desc','invalid']){
+      for(const filters of [{},{query:'ｗ'},{query:'あーみや'},{job:'術師'},{rarity:'6'},
+        {state:'owned'},{state:'unowned'},{state:'unfinished'},{query:'い',rarity:'6',job:'術師'}]){
+        const request={...filters,sort,direction};
+        assert.deepEqual(search(request),Ark.search(operators,request));
+      }
     }
   }
+  const first=search({sort:'name',direction:'asc'});first.reverse();
+  assert.deepEqual(search({sort:'name',direction:'asc'}).map(o=>o.name),['W','アーミヤ','エイヤフィヤトラ','百錬ガヴィル']);
   const updated=operators.map(o=>o.name==='百錬ガヴィル'?{...o,level:90}:o);
   assert.equal(search({query:'百錬'})[0].level,1);
   assert.equal(Ark.prepareSearch(updated)({query:'百錬'})[0].level,90);
