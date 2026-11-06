@@ -431,7 +431,7 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 .public-oprow .support-action { width:40px;height:40px;min-height:40px;padding:6px;justify-content:center;justify-self:center;background:transparent;border-radius:8px }
 .public-oprow .support-action:hover { background:var(--blue-deep);color:#a6d1ff }
 .public-oprow .support-action svg { flex-shrink:0 }
-/* 初回ロード：小休止を挟んで中央の手前まで進み、準備完了後に残りを接続する。 */
+/* 初回ロード：2回の小休止を挟んで中央の手前まで進み、準備完了後に残りを接続する。 */
 .initial { position:fixed;inset:0;z-index:100;display:grid;place-items:center;min-height:100dvh;padding:0;overflow:hidden;background:var(--bg) }
 .initial-track { position:absolute;left:0;right:0;top:50%;display:flex;height:1px;animation:initial-breathe 1.8s 1500ms ease-in-out infinite alternate }
 .initial-line { display:block;width:50%;height:1px;background:#ead04c;box-shadow:0 0 6px #ead04c55;transform:scaleX(0);animation:initial-connect 1500ms cubic-bezier(.25,.7,.35,1) forwards;transform-origin:left center }
@@ -443,9 +443,8 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 .initial.is-complete .initial-line { animation:none!important;transform:scaleX(1) }
 @keyframes initial-connect {
   0% { transform:scaleX(0) }
-  24%,34% { transform:scaleX(.4) }
-  55%,64% { transform:scaleX(.72) }
-  80%,87% { transform:scaleX(.9) }
+  32%,42% { transform:scaleX(.45) }
+  74%,83% { transform:scaleX(.8) }
   100% { transform:scaleX(.97) }
 }
 @keyframes initial-breathe {
