@@ -51,7 +51,7 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 .sort-select { border:0;background:none;font-size:11px;color:var(--muted);padding:6px 0;max-width:140px }
 .roster { display:grid;gap:10px;border:0;border-radius:0;overflow:visible;background:transparent }
 .roster>.empty { grid-column:1/-1 }
-.oprow { position:relative;width:100%;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) 40px;gap:11px 10px;align-items:start;text-align:left;padding:12px 13px 12px 20px;background:var(--panel);border:1px solid #393939;border-radius:7px;overflow:hidden;transition:background .15s }
+.oprow { position:relative;width:100%;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) 40px;gap:10px;align-items:start;text-align:left;padding:10px 13px 4px 20px;background:var(--panel);border:1px solid #393939;border-radius:7px;overflow:hidden;transition:background .15s }
 .oprow:hover { background:#222222 }
 /* ★6は上の橙から下の黄へ。白い四角も下ほど大きくなる静的な模様を使う。 */
 .oprow[data-rarity="6"] { --rarity-band:var(--rarity-six-pattern),linear-gradient(90deg,#713c1238,transparent 90%),linear-gradient(180deg,#df8508 0%,#edb900 52%,#efda0a 100%) }
@@ -65,7 +65,7 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
    autoは一度描画したカードの実寸を保持する。未描画時の値は内容部分の高さ。
    非対応ブラウザでは通常描画のまま。検索・Tab移動・印刷で内容を失わない。 */
 @supports (content-visibility:auto) and (contain-intrinsic-block-size:auto 1px) {
-  .oprow { content-visibility:auto;contain-intrinsic-block-size:auto 139px }
+  .oprow { content-visibility:auto;contain-intrinsic-block-size:auto 147px }
   @media print {
     .oprow { content-visibility:visible;contain-intrinsic-block-size:none }
   }
@@ -291,8 +291,8 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 .row-action svg { width:24px;height:24px }
 .op-training { grid-column:1/-1;grid-row:3;display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(62px,1.1fr);gap:5px;min-width:0;border-top:1px solid #393939;padding-top:10px }
 .op-training .row-skills { display:contents }
-.row-skills .skill-pill, .op-training .module-pills.row-modules { display:grid;justify-items:center;align-content:center;gap:1px;min-width:0;min-height:46px;padding:3px 2px;border:1px solid #3b4147;border-radius:3px;font-size:21px;line-height:1.15;font-variant-numeric:tabular-nums }
-.row-skills .skill-pill b, .row-modules .module-heading { font-size:12px;font-weight:500;line-height:1.25;color:#a7a7a7 }
+.row-skills .skill-pill, .op-training .module-pills.row-modules { display:grid;justify-items:center;align-content:center;gap:2px;min-width:0;min-height:60px;padding:4px 2px;border:1px solid #3b4147;border-radius:3px;font-size:21px;line-height:1.15;font-variant-numeric:tabular-nums }
+.row-skills .skill-pill b, .row-modules .module-heading { font-size:14px;font-weight:500;line-height:1.25;color:#a7a7a7 }
 .row-skills .skill-pill.absent, .op-training .module-pills.row-modules { background:#1d1d1d;border-color:#393939 }
 .row-skills .skill-pill.unfilled .skill-value { font-size:13px }
 .row-modules .module-values { display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px 6px;min-width:0;color:var(--text) }
@@ -300,6 +300,9 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 @media(min-width:761px) {
   /* 実際の一覧幅で列数を決め、メニュー表示中や検索結果が少ない場合もカード幅を保つ。 */
   .roster { grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr)) }
+}
+@media(max-width:760px) {
+  .op-training { grid-template-columns:repeat(3,minmax(0,1fr)) minmax(84px,1.6fr) }
 }
 @media(max-width:360px) { .op-stats { column-gap:13px } }
 /* スマホの職業フィルターの高さを抑える。 */
