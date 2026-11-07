@@ -200,6 +200,16 @@ node scripts/serve.cjs
 
 公開前は `node scripts/check.cjs` を実行してください。追跡ファイルと公開・ソース用ディレクトリを検査し、メールアドレス、直接記載したスプレッドシートID、Discord Webhookを検出した場合は値を表示せず停止します。例示用アドレス・GitHubの `noreply` アドレス・テスト内の明示的なダミーWebhookは除外します。公開するコミットの作成者メールには、自分のGitHub設定に表示される `noreply` アドレスを使ってください。現在のファイルやメール設定を変更しても、過去のコミット内容と作成者メールは消えないため、既公開の履歴は別途整理が必要です。
 
+クローン後は、GitHubのメール設定に表示される非公開用アドレスとユーザー名を指定し、このリポジトリだけのGit設定とフックを有効にします。以下の2値は自分のGitHub情報に置き換えてください。
+
+```sh
+node scripts/install-git-privacy.cjs "12345+your-username@users.noreply.github.com" "your-username"
+```
+
+コミット前に作成者・記録者の両メールがGitHubの `noreply` であることと、ステージ済みファイルの機密情報を確認します。プッシュ前には送るブランチ等の全履歴を検査し、過去のコミットに個人メールがあれば停止します。`git -c user.email=...` や `--author` の上書きも検査対象です。手動確認は `node scripts/git-privacy.cjs history HEAD`。停止時にメール・シートID等の実値は表示しません。
+
+フックにはNode.jsが必要です。クローン先ごとに有効化し、`--no-verify` や `core.hooksPath` の変更で無効化しないでください。GitHub画面・APIなどローカルGitを使わない操作にはフックが実行されないため、そちらでも非公開用メールを選びます。既公開のキャッシュやPR参照を消す機能はありません。
+
 自動テストは集計ルール、入力検証、本人認証とセッション、競合保存の拒否、変更列だけの保存、通知の成功・失敗、重複受付・クールダウン、JSONP処理をカバーします。GAS・Discord呼出しはモックで、実サービスへ送信しません。Googleによるアクセス制限、GASのリダイレクト通信、実際の通知はデプロイ後に別途確認します。
 
 参考：[GAS Web Apps](https://developers.google.com/apps-script/guides/web)、[Content Service](https://developers.google.com/apps-script/guides/content)、[Session](https://developers.google.com/apps-script/reference/base/session)、[Discord Webhook](https://docs.discord.com/developers/resources/webhook)。
