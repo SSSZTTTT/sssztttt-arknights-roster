@@ -1,0 +1,397 @@
+(async function(){
+  'use strict';
+  var T=ArkTransport,admin=T.admin,root=document.getElementById('app'),data=null,view='roster',summaryRarity='all',searchOpen=false,filters={query:'',rarity:'',job:'',sort:'level',direction:'desc'},dialog=null,selected=null,draft=null,saving=false,dirty=false,remainingUntil=Number(T.storage.get(T.demo?'ark_demo_ct':'ark_ct')||0);
+  var rosterSearch,renderedOperators=null,stampFormat,cooldownTimer;
+  var icons={support:'<circle cx="12" cy="9" r="3.5"/><path d="M5 11V8a7 7 0 0 1 14 0v5a3 3 0 0 1-3 3h-3M4 22v-2a5 5 0 0 1 5-5m6 1a5 5 0 0 1 5 4v2"/><rect x="3" y="8" width="3" height="5" rx="1"/><rect x="18" y="8" width="3" height="5" rx="1"/>',list:'<path d="M9 6h12M9 12h12M9 18h12M3 6h.01M3 12h.01M3 18h.01"/>',chart:'<path d="M4 20V10m8 10V4m8 16v-7"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5"/><path d="M19 11a7 7 0 0 0-12-6L4 8m1 5a7 7 0 0 0 12 6l3-3"/>',arrow:'<path d="m9 5 7 7-7 7"/>',close:'<path d="m6 6 12 12M18 6 6 18"/>',check:'<path d="m5 12 4 4L19 6"/>',send:'<path d="m21 3-7 18-4-7-7-4 18-7ZM10 14 21 3"/>',lock:'<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/>',edit:'<path d="m14 4 6 6M4 20l4-1L21 6l-4-4L4 15v5Z"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>'};
+  function icon(n){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(n==='support'?'<use href="#ark-support-icon"/>':icons[n]||icons.list)+'</svg>';}
+  function e(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function n(v){return v==null?'—':e(v);}
+  function percent(a,b){return b?(a/b*100).toFixed(1)+'%':'—';}
+  function stamp(date){
+    if(!date)return '—';
+    var d=new Date(date);
+    if(Number.isNaN(+d))return e(date);
+    if(!stampFormat)stampFormat=new Intl.DateTimeFormat('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'});
+    return stampFormat.format(d);
+  }
+  function toast(message){var el=document.getElementById('toast');el.textContent=message;el.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.hidden=true,4000);}
+  var menuMedia=window.matchMedia('(min-width:761px)'),menuAnimation=null,menuVersion=0,menuWanted=false;
+  var headerObserver,menuDialog=null,ownedDialog=null,importDialog=null,importPlan=null,importBusy=false;
+  function observeHeader(){
+    if(headerObserver)headerObserver.disconnect();
+    var header=document.querySelector('.site-header');
+    function measure(){
+      document.documentElement.style.setProperty('--mobile-header-height',header.getBoundingClientRect().height+'px');
+      var region=document.querySelector('.roster-scroll');
+      if(region)region.tabIndex=window.matchMedia('(max-width:760px)').matches?-1:0;
+    }
+    measure();headerObserver=new ResizeObserver(measure);headerObserver.observe(header);
+  }
+  function friendProfile(){
+    var profile=window.ARK_FRIEND_PROFILE;
+    if(!profile||!/^\d{8}$/.test(profile.id))return '';
+    var image=new URL(profile.image,document.baseURI);
+    if(image.origin!==location.origin)return '';
+    return '<section class="friend-profile" aria-label="フレンド申請"><h3>フレンド申請</h3><button type="button" class="friend-profile-link" id="open-profile" aria-haspopup="dialog" aria-controls="profile-dialog" aria-label="プロフィール画像を拡大"><img src="'+e(image.href)+'" alt="ドクターのプロフィール" width="1280" height="603" loading="lazy"></button><button type="button" class="friend-copy" id="copy-friend-id" aria-label="フレンドID '+e(profile.id)+'をコピー"><strong>'+e(profile.id)+'</strong><span>IDをコピー</span></button></section>';
+  }
+  async function copyFriendId(){
+    var id=window.ARK_FRIEND_PROFILE.id,button=document.getElementById('copy-friend-id');
+    try{
+      await navigator.clipboard.writeText(id);
+      button.querySelector('span').textContent='コピーしました';
+      toast('フレンドIDをコピーしました');
+    }catch(_){
+      button.querySelector('span').textContent='コピーできません';
+      toast('コピーできませんでした。IDを長押ししてコピーしてください。');
+    }
+  }
+  function shell(initialRows){
+    menuVersion++;if(menuAnimation)menuAnimation.cancel();menuAnimation=null;menuWanted=false;
+    root.querySelectorAll('dialog[open]').forEach(el=>el.close());restoreModalScroll();
+    var menuItems=[['roster',admin?'育成を記録':'オペレーター','list'],['summary','統計','chart'],['history','リクエスト履歴','clock']];
+    var supportIcon=admin?'':'<svg aria-hidden="true" style="position:absolute;width:0;height:0"><defs><g id="ark-support-icon">'+icons.support+'</g></defs></svg>';
+    root.innerHTML=supportIcon+'<div class="shell'+(admin?' admin-shell':'')+'"><header class="site-header"><div class="brand"><div><div class="brand-name">OPERATOR</div><div class="brand-sub">ROSTER</div></div></div><div class="top-actions">'+(admin&&T.importPreview?'<button class="text-button wiki-import-button" id="wiki-import" title="Wikiから新規オペレーターを取得" aria-label="Wikiから新規オペレーターを取得">取得</button>':'')+(T.logout?'<button class="icon-button" id="logout" aria-label="ログアウト" title="ログアウト">'+icon('lock')+'</button>':'')+'<button class="icon-button" id="toggle-search" aria-label="検索" aria-controls="search-panel" aria-expanded="false">'+icon('search')+'</button><button class="icon-button" id="refresh" aria-label="最新の記録に更新">'+icon('refresh')+'</button><button class="icon-button menu-toggle" id="open-menu" aria-label="メニューを開く" aria-controls="navigation-dialog" aria-haspopup="dialog" aria-expanded="false">'+icon('menu')+'</button></div></header><main class="main" id="main"><div id="screen"></div></main></div><dialog class="dialog nav-dialog" id="navigation-dialog" aria-labelledby="navigation-title"><div class="nav-dialog-heading"><h2 id="navigation-title">メニュー</h2><button class="icon-button" id="close-menu" aria-label="メニューを閉じる">'+icon('close')+'</button></div><nav class="navigation" aria-label="メインメニュー">'+menuItems.map(([key,label,ic])=>'<button class="nav-item" data-view="'+key+'" '+(key===view?'aria-current="page"':'')+'>'+icon(ic)+label+'</button>').join('')+'</nav>'+friendProfile()+'<p class="nav-dialog-foot">非公式の個人記録サイト</p></dialog><dialog class="profile-viewer" id="profile-dialog" aria-label="プロフィール画像"><button type="button" class="icon-button profile-close" id="close-profile" aria-label="プロフィール画像を閉じる" autofocus>'+icon('close')+'</button><img id="profile-large" alt="ドクターのプロフィール"></dialog><dialog class="dialog" id="detail-dialog" aria-labelledby="dialog-title"></dialog><dialog class="dialog owned-confirm" id="owned-confirm" role="alertdialog" aria-labelledby="owned-title" aria-describedby="owned-description"><div class="dialog-body"><h2 id="owned-title">未所持に変更しますか？</h2><p class="owned-name" id="owned-name"></p><p id="owned-description">一度入手したオペレーターは通常手放せません。記録の訂正の場合のみ変更してください。<br>変更は「保存」で反映されます。</p><div class="dialog-actions"><button class="secondary" id="owned-cancel" autofocus>キャンセル</button><button class="primary" id="owned-accept">未所持に変更</button></div></div></dialog><dialog class="dialog import-dialog" id="import-dialog" aria-labelledby="import-title"></dialog><div class="toast" id="toast" role="status" hidden></div>';
+    menuDialog=document.getElementById('navigation-dialog');
+    var friendButton=document.getElementById('copy-friend-id');if(friendButton)friendButton.onclick=copyFriendId;
+    var profileDialog=document.getElementById('profile-dialog'),profileButton=document.getElementById('open-profile');
+    if(profileButton)profileButton.onclick=()=>{document.getElementById('profile-large').src=profileButton.querySelector('img').src;showDialog(profileDialog);};
+    document.getElementById('close-profile').onclick=()=>hideDialog(profileDialog);
+    profileDialog.addEventListener('click',ev=>{if(ev.target===profileDialog)hideDialog(profileDialog);});
+    profileDialog.addEventListener('cancel',ev=>{ev.preventDefault();hideDialog(profileDialog);});
+    profileDialog.addEventListener('close',restoreModalScroll);
+    document.getElementById('open-menu').onclick=()=>menuWanted?closeMenu():openMenu();
+    document.getElementById('close-menu').onclick=closeMenu;
+    menuDialog.addEventListener('cancel',ev=>{ev.preventDefault();closeMenu();});
+    menuDialog.addEventListener('click',ev=>{if(ev.target===menuDialog){var r=menuDialog.getBoundingClientRect();if(ev.clientX<r.left||ev.clientX>r.right||ev.clientY<r.top||ev.clientY>r.bottom)closeMenu();}});
+    menuDialog.addEventListener('close',()=>{if(menuDialog.open)return;setMenuState(false);restoreModalScroll();});
+    var logout=document.getElementById('logout');if(logout)logout.onclick=async()=>{if(dirty||saving){toast('編集中の変更を保存またはキャンセルしてからログアウトしてください。');return;}logout.disabled=true;try{await T.logout();}catch(error){toast(error.message);logout.disabled=false;}};
+    var importButton=document.getElementById('wiki-import');if(importButton)importButton.onclick=openImport;
+    observeHeader();dialog=document.getElementById('detail-dialog');
+    ownedDialog=document.getElementById('owned-confirm');
+    document.getElementById('owned-cancel').onclick=()=>finishOwnedChange(false);
+    document.getElementById('owned-accept').onclick=()=>finishOwnedChange(true);
+    ownedDialog.addEventListener('cancel',ev=>{ev.preventDefault();finishOwnedChange(false);});
+    ownedDialog.addEventListener('close',restoreModalScroll);
+    importDialog=document.getElementById('import-dialog');importDialog.addEventListener('cancel',ev=>{ev.preventDefault();closeImport();});importDialog.addEventListener('click',ev=>{if(ev.target===importDialog)closeImport();});
+    dialog.addEventListener('close',restoreModalScroll);importDialog.addEventListener('close',restoreModalScroll);
+    dialog.addEventListener('cancel',ev=>{ev.preventDefault();closeDialog();});dialog.addEventListener('click',ev=>{if(ev.target===dialog)closeDialog();});
+    document.querySelectorAll('[data-view]').forEach(b=>b.onclick=async()=>{if(!menuMedia.matches)await closeMenu();view=b.dataset.view;document.querySelectorAll('[data-view]').forEach(el=>{if(el===b)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});renderScreen();window.scrollTo({top:0});});
+    document.getElementById('refresh').onclick=()=>load(true);document.getElementById('toggle-search').onclick=()=>setSearchOpen(!searchOpen);renderScreen(initialRows);
+  }
+  function setMenuState(open){
+    menuWanted=open;
+    var button=document.getElementById('open-menu');
+    button.setAttribute('aria-expanded',String(open));button.setAttribute('aria-label',open?'メニューを閉じる':'メニューを開く');
+    document.querySelector('.shell').classList.toggle('menu-docked',open&&menuMedia.matches);
+  }
+  function menuMotion(from,to,duration){
+    if(window.matchMedia('(prefers-reduced-motion:reduce)').matches)return null;
+    return menuDialog.animate([{transform:from},{transform:to}],{duration:duration,easing:'cubic-bezier(.2,.7,.2,1)'});
+  }
+  function openMenu(options){
+    menuVersion++;if(menuAnimation)menuAnimation.cancel();
+    if(!menuDialog.open){if(menuMedia.matches)menuDialog.show();else showDialog(menuDialog);}
+    setMenuState(true);
+    menuAnimation=options&&options.animate===false?null:menuMotion('translateX(100%)','translateX(0)',240);
+  }
+  async function closeMenu(options){
+    if(!menuDialog||!menuDialog.open)return;
+    var version=++menuVersion;if(menuAnimation)menuAnimation.cancel();setMenuState(false);
+    menuAnimation=options&&options.animate===false?null:menuMotion('translateX(0)','translateX(100%)',180);
+    if(menuAnimation){try{await menuAnimation.finished;}catch(_){return;}}
+    if(version!==menuVersion)return;menuAnimation=null;hideDialog(menuDialog);
+  }
+  menuMedia.addEventListener('change',()=>closeMenu({animate:false}));
+  function setSearchOpen(open){
+    searchOpen=open;
+    var toggle=document.getElementById('toggle-search'),input=document.getElementById('search');
+    document.getElementById('search-panel').hidden=!open;
+    toggle.setAttribute('aria-expanded',String(open));
+    toggle.setAttribute('aria-label',open?'検索を閉じる':'検索');
+    if(!open)input.value=filters.query='';
+    renderRows();
+    (open?input:toggle).focus();
+  }
+  function renderScreen(initialRows){
+    var titles={roster:admin?'育成を記録':'オペレーター一覧',summary:'統計',history:'リクエスト履歴'};
+    var html=(T.demo?'<div class="preview-banner"><span>プレビュー · 保存やDiscord通知は実行されません</span><a href="?demo=1'+(admin?'':'&screen=admin')+'">'+(admin?'公開画面を見る':'入力画面を見る')+' ↗</a></div>':'')+(view==='roster'?'<h1 class="sr-only">'+titles[view]+'</h1>':'<div class="page-heading"><div><h1>'+titles[view]+'</h1></div></div>');
+    if(view==='roster'){
+      html+='<div class="roster-controls"><div id="cooldown" class="cooldown" role="status"></div><div class="toolbar" id="search-panel"'+(searchOpen?'':' hidden')+'><label class="search">'+icon('search')+'<input type="search" id="search" aria-label="オペレーター名で検索" placeholder="オペレーター名で検索" value="'+e(filters.query)+'" autocomplete="off"></label></div><div class="class-tabs" role="group" aria-label="職業・レアリティで絞り込み">'+['',...Ark.jobs].map(job=>'<button class="class-tab '+(filters.job===job?'active':'')+'" data-job="'+job+'" aria-pressed="'+(filters.job===job)+'">'+(job||'すべて')+'</button>').join('')+'<label class="rarity-filter"><span aria-hidden="true"><span id="rarity-value">★'+e(filters.rarity)+'</span> ▾</span><select class="rarity-select" id="rarity" aria-label="レアリティ"><option value="">すべてのレアリティ</option>'+[6,5,4,3,2,1].map(r=>'<option value="'+r+'" '+(String(r)===filters.rarity?'selected':'')+'>★'+r+'</option>').join('')+'</select></label></div><div class="list-meta"><span id="result-count"></span>'+'<div class="sort-controls" role="group" aria-label="並び替え"><select class="sort-select" id="sort" aria-label="並び順">'+[['level','レベル順'],['recent','実装日順'],['rarity','レアリティ順'],['name','名前順']].map(([v,l])=>'<option value="'+v+'" '+(v===filters.sort?'selected':'')+'>'+l+'</option>').join('')+'</select><button type="button" class="sort-direction" id="direction" role="switch" aria-label="昇順で表示" aria-checked="'+(filters.direction==='asc')+'"><span id="direction-label">'+(filters.direction==='asc'?'↑ 昇順':'↓ 降順')+'</span></button></div></div></div><div class="roster-scroll" tabindex="0" role="region" aria-label="オペレーター一覧のスクロール領域"><div class="roster" id="roster"></div><div class="list-footer"><span>最終取得 '+stamp(data.updatedAt)+'</span><span>'+(admin?'変更は保存ボタンで反映':'サポートアイコンからリクエスト')+'</span></div></div>';
+    }else if(view==='summary'){
+      html+=summaryOverview()+'<h2 class="summary-section-title">職業別の育成状況</h2>'+ '<div class="summary-switch" role="group" aria-label="集計のレアリティ">'+[['all','全体'],['','★4〜6'],...[6,5,4,3,2,1].map(r=>[String(r),'★'+r])].map(([v,l])=>'<button data-summary="'+v+'" class="'+(summaryRarity===v?'active':'')+'" aria-pressed="'+(summaryRarity===v)+'">'+l+'</button>').join('')+'</div><div id="summary-content"></div>';
+    }else{
+      html+='<div class="history-list">'+(data.history.length?data.history.map(h=>'<article class="history-row"><div class="history-symbol">'+icon('send')+'</div><div><strong>'+e(h.name)+'</strong><p>サポートリクエスト</p></div><time>'+stamp(h.time)+'</time></article>').join(''):'<div class="empty">'+icon('clock')+'<strong>まだリクエストはありません</strong>送信されたリクエストがここに表示されます。</div>')+'</div><p class="section-note">直近50件を表示します。依頼の送信記録であり、サポート枠への設定完了を示すものではありません。</p>';
+    }
+    document.getElementById('screen').innerHTML=html;renderedOperators=null;var searchToggle=document.getElementById('toggle-search');searchToggle.hidden=view!=='roster';searchToggle.setAttribute('aria-expanded',String(searchOpen));searchToggle.setAttribute('aria-label',searchOpen?'検索を閉じる':'検索');
+    if(view==='roster'){
+      document.getElementById('search').oninput=ev=>{filters.query=ev.target.value;renderRows();};document.getElementById('search').onkeydown=ev=>{if(ev.key==='Escape'){ev.preventDefault();setSearchOpen(false);}};
+      ['rarity','sort'].forEach(k=>document.getElementById(k).onchange=ev=>{filters[k]=ev.target.value;document.getElementById('rarity-value').textContent='★'+filters.rarity;renderRows();});
+      document.getElementById('direction').onclick=()=>{filters.direction=filters.direction==='asc'?'desc':'asc';document.getElementById('direction').setAttribute('aria-checked',String(filters.direction==='asc'));document.getElementById('direction-label').textContent=filters.direction==='asc'?'↑ 昇順':'↓ 降順';renderRows();};
+      document.querySelectorAll('[data-job]').forEach(b=>b.onclick=()=>{filters.job=b.dataset.job;document.querySelectorAll('[data-job]').forEach(el=>{el.classList.toggle('active',el===b);el.setAttribute('aria-pressed',String(el===b));});renderRows();});
+      document.getElementById('roster').onclick=handleRosterClick;renderRows(initialRows);tick();
+    }else if(view==='summary'){
+      var summaryButtons=document.querySelectorAll('[data-summary]');
+      summaryButtons.forEach(b=>b.onclick=()=>{
+        summaryRarity=b.dataset.summary;
+        summaryButtons.forEach(el=>{el.classList.toggle('active',el===b);el.setAttribute('aria-pressed',String(el===b));});
+        renderSummary();
+      });
+      renderSummary();
+    }
+  }
+  function skills(o,cls){return '<div class="skill-pills '+(cls||'')+'">'+o.skills.map((s,i)=>{var value=s==='-'?'—':s===''?'未入力':e(s);return '<span class="skill-pill '+(s==='M3'?'complete':s==='-'?'absent':s===''?'unfilled':'')+'"><b>S'+(i+1)+(cls==='request-skills'?':':'')+'</b> '+(cls==='row-skills'?'<span class="skill-value">'+value+'</span>':value)+'</span>';}).join('')+'</div>';}
+  function modules(o,cls){var list=o.modules.map((v,i)=>v&&v!=='-'&&v!=='0'?'<span class="module-pill"><i>'+Ark.modules[i]+'</i>'+e(v)+'</span>':'').join('')||'<span class="muted">—</span>';return '<div class="module-pills '+(cls||'')+'">'+(cls==='row-modules'?'<span class="module-heading">Mod</span><span class="module-values">'+list+'</span>':list)+'</div>';}
+  function operatorRow(o){
+    var rowClass='oprow rarity-banded',rarityAttribute=' data-rarity="'+o.rarity+'"';
+    var opening=admin?'<button class="'+rowClass+'"'+rarityAttribute+' data-edit-name="'+e(o.name)+'" aria-label="'+e(o.name)+' 星'+o.rarity+' 育成を編集">':'<article class="'+rowClass+' public-oprow"'+rarityAttribute+' aria-label="'+e(o.name)+'">';
+    var identity='<span class="op-identity"><span class="op-heading"><span class="op-name">'+e(o.name)+'</span><span class="stars" role="img" aria-label="星'+o.rarity+'"></span>'+(!o.owned?'<span class="op-meta"><span class="unowned">未所持</span></span>':'')+'</span></span>';
+    var training='<span class="op-stats"><span class="op-elite"><small>昇進</small><strong>'+n(o.elite)+'</strong></span><span class="op-level"><small>Lv.</small><strong>'+n(o.level)+'</strong></span><span class="op-potential"><small>潜在</small><strong>'+n(o.potential)+'</strong></span></span><span class="op-training">'+skills(o,'row-skills')+modules(o,'row-modules')+'</span>';
+    var action=admin?'<span class="row-action"><span class="action-label">編集</span>'+icon('edit')+'</span>':'<button type="button" class="row-action support-action" data-request-name="'+e(o.name)+'" aria-label="'+e(o.name)+'をリクエスト" title="リクエスト">'+icon('support')+'</button>';
+    return opening+identity+training+action+(admin?'</button>':'</article>');
+  }
+  function rowMarkup(list){
+    return list.length?list.map(operatorRow).join(''):'<div class="empty">'+icon('search')+'<strong>該当するオペレーターがいません</strong>名前や絞り込み条件を変えてみてください。<br><button class="text-button" id="reset-filters">絞り込みをリセット</button></div>';
+  }
+  function handleRosterClick(event){
+    var button=event.target.closest('[data-edit-name],[data-request-name],#reset-filters');
+    if(!button)return;
+    if(button.id==='reset-filters'){filters={query:'',rarity:'',job:'',sort:'level',direction:'desc'};renderScreen();return;}
+    var name=button.dataset.editName||button.dataset.requestName;
+    var operator=data.operators.find(o=>o.name===name);
+    if(operator)openOperator(operator);
+  }
+  function renderRows(initialRows){
+    var list=initialRows?initialRows.operators:rosterSearch(filters);
+    if(!renderedOperators||list.length!==renderedOperators.length||list.some((operator,i)=>operator!==renderedOperators[i])){
+      document.getElementById('result-count').innerHTML='<strong>'+list.length+'</strong> / '+data.operators.length+' OPERATORS';
+      document.getElementById('roster').innerHTML=initialRows?initialRows.html:rowMarkup(list);
+      renderedOperators=list;
+    }
+    var region=document.querySelector('.roster-scroll'),mobile=window.matchMedia('(max-width:760px)').matches;
+    region.tabIndex=mobile?-1:0;
+    if(mobile)window.scrollTo({top:0,behavior:'instant'});
+    else region.scrollTop=0;
+  }
+  function summaryOverview(){
+    var groups=[['全体',data.operators],['★4〜6',data.operators.filter(o=>o.rarity>=4)],...[6,5,4,3,2,1].map(r=>['★'+r,data.operators.filter(o=>o.rarity===r)])].map(([label,list])=>{
+      var owned=list.filter(o=>o.owned),eligible=owned.filter(o=>o.rarity>=4);
+      return {label:label,masteryApplicable:list.some(o=>o.rarity>=4),available:list.length,count:owned.length,max:owned.filter(Ark.maxed).length,mastered:eligible.filter(Ark.mastered).length,masteryCount:eligible.length,potential:owned.filter(o=>o.potential>=6).length,potentialCount:owned.filter(Ark.hasPotential).length};
+    });
+    var metrics=[['所持オペレーター','count','available','list'],['レベルMAX','max','count','chart'],['全スキル特化3','mastered','masteryCount','check'],['完凸','potential','potentialCount','chart']];
+    return '<div class="overview summary-overview">'+metrics.map(([label,key,denominator,ic])=>'<section class="metric"><h2 class="metric-label">'+label+icon(ic)+'</h2><dl class="metric-comparison">'+groups.map(g=>'<div><dt>'+g.label+'</dt><dd>'+(key==='mastered'&&!g.masteryApplicable?'<strong>-</strong><small aria-hidden="true">&nbsp;</small>':'<strong>'+g[key]+'</strong><span> / '+g[denominator]+'</span><small>'+percent(g[key],g[denominator])+'</small>')+'</dd></div>').join('')+'</dl></section>').join('')+'</div><p class="section-note summary-scope">完凸率の集計からはコラボオペレーターなどの潜在がないオペレーターは除外しています</p>';
+  }
+  function renderSummary(){
+    var s=Ark.summarize(data.operators,summaryRarity),noMastery=['1','2','3'].includes(summaryRarity);
+    function fraction(value,total,rate){return value+' / '+total+(rate?'<small>'+percent(value,total)+'</small>':'');}
+    document.getElementById('summary-content').innerHTML='<div class="summary-table-wrap"><table class="summary-table"><thead><tr><th scope="col">職業</th><th scope="col">所持</th><th scope="col">Lv MAX</th><th scope="col">特化3<small>スキル数</small></th><th scope="col">全特化<small>人数</small></th><th scope="col">完凸</th></tr></thead><tbody>'+[...s.rows,s.total].map(c=>'<tr><th scope="row">'+c.job+'</th><td>'+fraction(c.count,c.available,false)+'</td><td>'+fraction(c.max,c.count,true)+'</td><td>'+(noMastery?'-':fraction(c.m3,c.skills,true))+'</td><td>'+(noMastery?'-':fraction(c.mastered,c.masteryCount,true))+'</td><td>'+fraction(c.potential,c.potentialCount,true)+'</td></tr>').join('')+'</tbody></table></div>';
+  }
+  var modalScroll=null;
+  function showDialog(el){
+    if(!modalScroll){
+      var region=document.querySelector('.roster-scroll'),html=document.documentElement;
+      modalScroll={x:window.scrollX,y:window.scrollY,listTop:region?region.scrollTop:0};
+      html.style.setProperty('--modal-scroll-top',-modalScroll.y+'px');
+      html.style.setProperty('--modal-page-width',html.clientWidth+'px');
+      html.classList.add('modal-scroll-locked');
+    }
+    try{el.showModal();}catch(error){restoreModalScroll();throw error;}
+  }
+  function restoreModalScroll(){
+    if(!modalScroll||document.querySelector('dialog:modal'))return;
+    var saved=modalScroll,html=document.documentElement;modalScroll=null;
+    html.classList.remove('modal-scroll-locked');
+    html.style.removeProperty('--modal-scroll-top');html.style.removeProperty('--modal-page-width');
+    var region=document.querySelector('.roster-scroll');if(region)region.scrollTop=saved.listTop;
+    window.scrollTo({left:saved.x,top:saved.y,behavior:'instant'});
+  }
+  function hideDialog(el){el.close();restoreModalScroll();}
+  function openOperator(o){selected=o;dirty=false;saving=false;dialog.classList.toggle('editor-dialog',admin);if(admin){draft={...o.training};renderEditor();}else renderRequest();showDialog(dialog);}
+  function dialogHeader(eyebrow){var title='<h2 id="dialog-title">'+e(selected.name)+'</h2>';return '<div class="dialog-top">'+(admin?title:'<p class="eyebrow">'+eyebrow+'</p>')+'<button class="icon-button" data-close aria-label="閉じる">'+icon('close')+'</button></div>'+(admin?'<p class="dialog-sub">★'+selected.rarity+' · '+e(selected.job)+'</p>':title);}
+  function renderRequest(){dialog.innerHTML='<div class="dialog-body request-body">'+dialogHeader('SUPPORT REQUEST')+'<div class="detail-stats"><div><small>昇進</small><strong>'+n(selected.elite)+'</strong></div><div><small>レベル</small><strong>'+n(selected.level)+'</strong></div><div><small>潜在</small><strong>'+n(selected.potential)+'</strong></div></div><div class="detail-section"><p>スキル</p>'+skills(selected,'request-skills')+'</div><div class="detail-section"><p>モジュール</p>'+modules(selected)+'</div><p class="dialog-notice">このオペレーターをリクエストしますか？<br>送信ボタンを押すとDiscordに通知します。連続したリクエストは3分間のCTがあります。</p><div class="dialog-actions"><button class="primary" id="send-request">'+icon('send')+'リクエスト送信</button><button class="secondary" data-close>キャンセル</button></div><p class="dialog-message" id="dialog-message" role="status"></p></div>';bindClose();document.getElementById('send-request').onclick=sendRequest;tick();}
+  async function sendRequest(){if(saving||remainingUntil>Date.now())return;saving=true;var b=document.getElementById('send-request'),m=document.getElementById('dialog-message');b.disabled=true;b.innerHTML='<span class="spinner"></span>送信結果を確認中…';m.textContent='この画面を開いたままお待ちください。';try{var result=await T.request(selected.name);if(result.retryAt)setCooldown(result.retryAt);if(result.status==='sent'){m.textContent=T.demo?'プレビュー：実際の通知は送信していません。':'Discordにリクエストを送信しました。';b.textContent='送信しました';if(!T.demo)data.history.unshift({name:selected.name,time:new Date().toISOString()});}else{m.classList.add('error');m.textContent=result.message||'送信できませんでした。時間をおいてお試しください。';if(result.status==='uncertain')setCooldown(Math.max(remainingUntil,Date.now()+180000));b.textContent='リクエスト送信';}}catch(err){m.classList.add('error');m.textContent=err.message;setCooldown(Date.now()+180000);b.textContent='送信結果を確認できません';}finally{saving=false;tick();}}
+  function bindClose(){dialog.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeDialog);}
+  function closeDialog(){if(saving)return;if(dirty&&!window.confirm('保存していない変更を破棄しますか？'))return;hideDialog(dialog);dirty=false;selected=null;}
+  function field(k,label,type){return '<div class="field"><label for="edit-'+k+'">'+label+'</label><input id="edit-'+k+'" data-field="'+k+'" type="'+(type||'number')+'" inputmode="numeric" min="'+(k==='elite'?0:1)+'" max="'+(k==='level'?Ark.caps[selected.rarity][1]:selected.rarity===6?9999:6)+'" value="'+e(draft[k]==='-'?'':draft[k])+'" placeholder="未入力"></div>';}
+  function select(k,label,options){return '<div class="field"><label for="edit-'+k+'">'+label+'</label><select id="edit-'+k+'" data-field="'+k+'">'+options.map(([v,l])=>'<option value="'+v+'" '+(String(draft[k])===v?'selected':'')+'>'+l+'</option>').join('')+'</select></div>';}
+  function finishOwnedChange(accept){
+    if(accept&&selected){draft.owned=false;document.getElementById('edit-owned').checked=false;dirty=true;}
+    hideDialog(ownedDialog);
+  }
+  function renderEditor(){
+    var skillOptions=[['','未入力'],['-','対象外'],['7','7（未特化）'],...(selected.rarity>=4?[['M1','特化1'],['M2','特化2'],['M3','特化3']]:[])];
+    dialog.innerHTML='<div class="dialog-body">'+dialogHeader('')+'<label class="owned-switch" for="edit-owned"><input id="edit-owned" type="checkbox" '+(draft.owned?'checked':'')+'>所持している</label><div class="edit-section-heading"><h3>基本育成</h3><button class="text-button" id="level-max">最終昇進・Lv MAX</button></div><div class="editor-grid">'+select('elite','昇進',[['','未入力'],['0','未昇進'],...(selected.rarity>=3?[['1','昇進1']]:[]),...(selected.rarity>=4?[['2','昇進2']]:[])])+field('level','レベル')+field('potential','潜在')+'</div><div class="edit-section"><div class="edit-section-heading"><h3>スキル特化</h3>'+(selected.rarity>=4?'<button class="text-button" id="all-m3">対象スキルをすべてM3</button>':'')+'</div><div class="fields">'+['s1','s2','s3'].map((k,i)=>select(k,'スキル'+(i+1),skillOptions)).join('')+'</div></div><div class="edit-section"><div class="edit-section-heading"><h3>モジュール</h3></div><div class="fields modules">'+['x','y','delta','alpha'].map((k,i)=>select(k,Ark.modules[i],[['','未入力'],['-','対象外'],['0','未開放'],['1','Lv1'],['2','Lv2'],['3','Lv3']])).join('')+'</div></div><p class="dialog-message" id="dialog-message" role="status"></p></div><div class="editor-save"><button class="secondary" data-close>キャンセル</button><button class="primary" id="save-training">'+icon('check')+'変更を保存</button></div>';
+    bindClose();document.getElementById('edit-owned').onchange=ev=>{
+      if(!ev.target.checked){ev.target.checked=true;document.getElementById('owned-name').textContent=selected.name;showDialog(ownedDialog);return;}
+      draft.owned=ev.target.checked;dirty=true;
+    };
+    dialog.querySelectorAll('[data-field]').forEach(input=>input.oninput=()=>{draft[input.dataset.field]=input.value;dirty=true;});
+    document.getElementById('level-max').onclick=()=>{[draft.elite,draft.level]=Ark.caps[selected.rarity];dirty=true;renderEditor();};
+    var all=document.getElementById('all-m3');if(all)all.onclick=()=>{['s1','s2','s3'].forEach(k=>{if(draft[k]!=='-')draft[k]='M3';});dirty=true;renderEditor();};
+    document.getElementById('save-training').onclick=saveTraining;
+  }
+  async function saveTraining(){if(saving)return;var m=document.getElementById('dialog-message');try{var values=Ark.validate(draft,selected.rarity);saving=true;dialog.querySelectorAll('button,input,select').forEach(b=>b.disabled=true);document.getElementById('save-training').innerHTML='<span class="spinner"></span>保存中…';var op=await T.save(selected,values);data.operators[data.operators.findIndex(o=>o.name===op.name)]=op;rosterSearch=Ark.prepareSearch(data.operators);data.updatedAt=new Date().toISOString();dirty=false;selected=null;renderScreen();hideDialog(dialog);toast(T.demo?'プレビュー内に保存しました（シートは変更していません）':'育成記録を保存しました');}catch(err){m.classList.add('error');m.textContent=err.message;dialog.querySelectorAll('button,input,select').forEach(b=>b.disabled=false);document.getElementById('save-training').textContent='変更を保存';}finally{saving=false;}}
+  function closeImport(){if(!importBusy&&!saving){hideDialog(importDialog);importPlan=null;}}
+  function importContents(message,error){
+    var p=importPlan,hasChanges=p&&(p.additions.length||p.updates.length||p.summaryReferenceUpdate);
+    function rows(list){return '<ul class="import-list">'+list.map(o=>'<li><strong>'+e(o.name)+'</strong><span>★'+e(o.rarity)+' · '+e(o.job)+'</span><small>実装日 '+e(o.date)+'</small></li>').join('')+'</ul>';}
+    var details=p?'<p class="dialog-notice">新規 '+p.additions.length+'人'+(p.updates.length?'・基本情報の訂正 '+p.updates.length+'人':'')+'</p>'+rows(p.additions)+(p.updates.length?'<h3>基本情報の訂正</h3><ul class="import-list">'+p.updates.map(u=>'<li><strong>'+e(u.name)+'</strong>'+u.fields.map(field=>{var key={'実装日':'date','職業':'job','レア':'rarity'}[field];return '<span>'+e(field)+'：'+e(u.before[key])+' → '+e(u.after[key])+'</span>';}).join('')+'</li>').join('')+'</ul>':'')+(p.newYears.length?'<p class="dialog-notice">'+p.newYears.map(e).join('・')+'シートを作成します。</p>':'')+(p.summaryReferenceUpdate?'<p class="dialog-notice">統計の参照先も更新します。</p>':'')+(hasChanges?'<p class="dialog-notice">新規オペレーターは未所持で追加します。既存の育成状況は保持します。</p>':'<p class="dialog-notice">追加・訂正するオペレーターはありません。</p>'):'';
+    importDialog.innerHTML='<div class="dialog-body"><div class="dialog-top"><h2 id="import-title">Wikiから新規取得</h2><button class="icon-button" data-import-close aria-label="閉じる" '+(importBusy?'disabled':'')+'>'+icon('close')+'</button></div>'+details+'<p class="dialog-message '+(error?'error':'')+'" id="import-message" role="status">'+(importBusy?'<span class="spinner"></span> ':'')+e(message||'')+'</p><div class="dialog-actions">'+(hasChanges?'<button class="primary" id="import-confirm" '+(importBusy?'disabled':'')+'>'+((p.additions.length)?'OK・追加する':'OK・反映する')+'</button>':'')+(!importBusy&&!p?'<button class="secondary" id="import-retry">もう一度取得</button>':'')+'<button class="secondary" data-import-close '+(importBusy?'disabled':'')+'>'+(hasChanges?'キャンセル':'閉じる')+'</button></div></div>';
+    importDialog.querySelectorAll('[data-import-close]').forEach(b=>b.onclick=closeImport);
+    var confirm=document.getElementById('import-confirm');if(confirm)confirm.onclick=commitImport;
+    var retry=document.getElementById('import-retry');if(retry)retry.onclick=scanImport;
+  }
+  function openImport(){
+    if(dirty||saving||importBusy){toast('編集中の変更を保存またはキャンセルしてから取得してください。');return;}
+    importPlan=null;importContents('');showDialog(importDialog);scanImport();
+  }
+  async function scanImport(){
+    if(importBusy)return;importPlan=null;importBusy=true;importContents('日本実装済みのオペレーターを確認しています…');
+    try{importPlan=await T.importPreview();importBusy=false;importContents('');}
+    catch(error){importBusy=false;importContents(error.code==='INVALID'?'取得機能を利用するには、入力用GASを最新版に更新してください。':error.message,true);}
+  }
+  async function commitImport(){
+    if(importBusy||!importPlan)return;
+    importBusy=true;saving=true;importContents('確認した内容を反映しています…');
+    try{
+      var result=await T.importCommit(importPlan.planId);
+      saving=false;importBusy=false;hideDialog(importDialog);importPlan=null;
+      await load(false);toast('新規 '+result.added+'人を追加しました'+(result.updated?'（基本情報の訂正 '+result.updated+'人）':''));
+    }catch(error){saving=false;importBusy=false;importPlan=null;importContents(error.message,true);}
+  }
+  function setCooldown(time){remainingUntil=Math.max(remainingUntil,Number(time)||0);T.storage.set(T.demo?'ark_demo_ct':'ark_ct',remainingUntil);tick();}
+  function tick(){
+    clearTimeout(cooldownTimer);
+    if(admin)return;
+    var remaining=remainingUntil-Date.now(),seconds=Math.max(0,Math.ceil(remaining/1000)),active=seconds>0;
+    var banner=document.getElementById('cooldown');
+    if(banner){
+      banner.classList.toggle('active',active);
+      var label=active?'次のサポート依頼まで '+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0'):'';
+      if(banner.textContent!==label)banner.textContent=label;
+    }
+    var button=document.getElementById('send-request');
+    if(button&&!saving){
+      button.disabled=active;
+      if(button.textContent!=='送信しました'){
+        if(active){
+          var waitLabel='あと '+seconds+' 秒で依頼できます';
+          if(button.textContent!==waitLabel)button.textContent=waitLabel;
+        }else if(!button.querySelector('svg'))button.innerHTML=icon('send')+'リクエスト送信';
+      }
+    }
+    if(active)cooldownTimer=setTimeout(tick,Math.min(1000,remaining));
+  }
+  function prepareInitialRows(){
+    if(!root.querySelector('.initial'))return;
+    // 接続完了を示す前に、一覧のカードHTMLまで準備する。
+    var operators=rosterSearch(filters);
+    return {operators:operators,html:rowMarkup(operators)};
+  }
+  async function freezeInitialLoading(loader){
+    if(!loader||document.hidden||window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+    var lines=Array.from(loader.querySelectorAll('.initial-line'));if(!lines.length)return;
+    // 描画側の停止が確定してから位置を取得する。重い一覧構築中の先行・巻き戻りを防ぐ。
+    var paused=await new Promise(resolve=>{
+      var frame,deadline,done=false,fallback=false,pauses=[];
+      function finish(synchronized){if(done)return;done=true;cancelAnimationFrame(frame);clearTimeout(deadline);document.removeEventListener('visibilitychange',visibility);resolve(synchronized);}
+      function visibility(){if(document.hidden)finish(false);}
+      function paintFallback(){
+        if(done||fallback)return;fallback=true;
+        lines.forEach(line=>{line.style.animationPlayState='paused';});
+        frame=requestAnimationFrame(()=>{if(!done)frame=requestAnimationFrame(()=>finish(true));});
+      }
+      document.addEventListener('visibilitychange',visibility);
+      // 同期できない環境では古い位置へ戻さず、演出を省略して一覧を表示する。
+      deadline=setTimeout(()=>finish(false),500);
+      try{
+        lines.forEach(line=>{
+          var pending=typeof line.getAnimations==='function'?line.getAnimations().filter(animation=>animation.animationName==='initial-connect'):[];
+          if(!pending.length)throw Error('Loading animation unavailable');
+          pending.forEach(animation=>{
+            animation.pause();
+            // pause前のreadyやcurrentTimeでは、描画側の進行に追いついていないことがある。
+            var ready=animation.ready;if(!ready||typeof ready.then!=='function')throw Error('Loading animation pause unavailable');
+            pauses.push(ready);
+          });
+        });
+        Promise.all(pauses).then(()=>finish(true),paintFallback);
+      }catch(_){Promise.all(pauses).catch(()=>{});paintFallback();}
+      if(document.hidden)finish(false);
+    });
+    if(!paused||document.hidden||window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+    // DOMの移動でCSSアニメーションが再開しないよう、停止済みの位置を固定する。
+    var scales=lines.map(line=>{var m=/^matrix(?:3d)?\(([^,]+)/.exec(window.getComputedStyle(line).transform||'none');return m?Math.max(0,Math.min(1,Number(m[1]))):1;});
+    lines.forEach((line,i)=>{line.style.transform='scaleX('+scales[i]+')';});
+    loader.classList.add('is-finishing');
+    return {lines:lines,scales:scales};
+  }
+  function waitForInitialLoadingPaint(){
+    return new Promise(resolve=>{
+      var frame,deadline,done=false,paintDeadlineMs=500;
+      function finish(){if(done)return;done=true;cancelAnimationFrame(frame);clearTimeout(deadline);document.removeEventListener('visibilitychange',visibility);resolve();}
+      function visibility(){if(document.hidden)finish();}
+      document.addEventListener('visibilitychange',visibility);
+      deadline=setTimeout(finish,paintDeadlineMs);
+      // 一覧背面の重い初回描画を先に通し、接続アニメーションの時間を使わせない。
+      frame=requestAnimationFrame(()=>{if(!done)frame=requestAnimationFrame(finish);});
+      if(document.hidden)finish();
+    });
+  }
+  async function finishInitialLoading(loader,motion){
+    if(!loader)return;
+    if(!motion||document.hidden||window.matchMedia('(prefers-reduced-motion:reduce)').matches){loader.classList.add('is-complete');return;}
+    await waitForInitialLoadingPaint();
+    if(document.hidden||window.matchMedia('(prefers-reduced-motion:reduce)').matches){loader.classList.add('is-complete');return;}
+    var lines=motion.lines,progress=Math.min(...motion.scales);
+    var finishNearMs=260,finishFarMs=450,connectedHoldMs=80,deadlineGraceMs=120;
+    var duration=Math.round(finishNearMs+(finishFarMs-finishNearMs)*(1-Math.min(progress/.97,1)));
+    await new Promise(resolve=>{
+      var animations=[],deadline,hold,connected=false,done=false;
+      function cancelAnimations(){animations.forEach(animation=>animation.cancel());}
+      function finish(){if(done)return;done=true;clearTimeout(deadline);clearTimeout(hold);document.removeEventListener('visibilitychange',visibility);cancelAnimations();resolve();}
+      function complete(){
+        if(done||connected)return;connected=true;clearTimeout(deadline);
+        lines.forEach(line=>{line.style.transform='scaleX(1)';});
+        loader.classList.add('is-complete');cancelAnimations();
+        hold=setTimeout(finish,connectedHoldMs);
+      }
+      function visibility(){if(document.hidden)finish();}
+      document.addEventListener('visibilitychange',visibility);
+      // 完了イベントが止まる環境でも、黒い画面を保持し続けない。
+      deadline=setTimeout(complete,duration+deadlineGraceMs);
+      try{
+        var completions=lines.map((line,i)=>{
+          // matrix(0,…)からの補間は離散切替になるため、両端を同じscaleX形式にする。
+          var animation=line.animate([{transform:'scaleX('+motion.scales[i]+')'},{transform:'scaleX(1)'}],{duration:duration,easing:'ease-in-out',fill:'forwards'});
+          animations.push(animation);
+          // 後続の開始失敗や非表示化でcancelしても、finishedの拒否を必ず処理する。
+          return Promise.resolve(animation.finished).catch(complete);
+        });
+        Promise.all(completions).then(complete);
+      }catch(_){complete();}
+      if(document.hidden)finish();
+    });
+  }
+  async function load(refresh){
+    var b=document.getElementById('refresh'),loader=null,previousData=data,previousSearch=rosterSearch;if(b)b.disabled=true;
+    try{
+      var loaded=await T.get();if(!loaded||!Array.isArray(loaded.operators)||!Array.isArray(loaded.history))throw Error('取得データの形式が一致しません。');
+      loader=root.querySelector('.initial');var loadingMotion=await freezeInitialLoading(loader);
+      data=loaded;rosterSearch=Ark.prepareSearch(data.operators);var initialRows=prepareInitialRows();
+      // 黒い画面を保ったまま、その下に一覧のDOMも構築する。mainのIDは新しい一覧に譲る。
+      if(loader){loader.removeAttribute('id');document.body.append(loader);}
+      shell(initialRows);
+      // 必要な一覧レイアウトも黒い画面のうちに確定し、接続後の描画負荷を減らす。
+      if(loader)root.getBoundingClientRect();
+      await finishInitialLoading(loader,loadingMotion);
+      if(refresh)toast('最新の記録に更新しました');
+    }catch(err){
+      data=previousData;rosterSearch=previousSearch;
+      if(data){toast(err.message);if(b)b.disabled=false;}
+      else root.innerHTML='<main class="main"><div class="page-heading"><div><p class="eyebrow">ARK RECORD</p><h1>アークナイツ育成記録</h1></div></div><div class="error-box"><h2>記録を読み込めませんでした</h2><p>'+e(err.message)+'</p><button class="secondary" id="retry-load">再読み込み</button></div></main>';
+      var retry=document.getElementById('retry-load');if(retry)retry.onclick=()=>load(false);
+    }finally{if(loader)loader.remove();}
+  }
+  window.addEventListener('beforeunload',ev=>{if(dirty||saving){ev.preventDefault();ev.returnValue='';}});
+  await load(false);if(data&&!admin){var previous=await T.recover();if(previous){if(previous.retryAt)setCooldown(previous.retryAt);toast(previous.status==='sent'?'前回のリクエストは送信済みです。':previous.message||'前回の送信結果をご確認ください。');}}
+})();
