@@ -194,3 +194,12 @@ test('star-six potential total retains excess copies and excludes other rarities
   assert.equal(Ark.starSixPotentialTotal(list),47);
   assert.equal(Ark.starSixPotentialTotal([]),0);
 });
+
+
+test('star-six potential ranking orders numeric records, shares ranks and preserves source order',()=>{
+  const list=[op({rarity:6,name:'ウ',potential:6}),op({rarity:6,name:'イ',potential:'28'}),op({rarity:6,name:'ア',potential:28}),op({rarity:5,potential:99}),op({rarity:6,potential:99,owned:false}),...['-',null,'',NaN,Infinity,-1,1.5].map(potential=>op({rarity:6,potential}))];
+  const before=list.slice();
+  assert.deepEqual(Ark.starSixPotentialRanking(list).map(o=>[o.name,o.potential,o.rank]),[['ア',28,1],['イ',28,1],['ウ',6,3]]);
+  assert.deepEqual(list,before);
+  assert.deepEqual(Ark.starSixPotentialRanking([]),[]);
+});

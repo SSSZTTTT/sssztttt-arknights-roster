@@ -17,6 +17,13 @@ var Ark = (function () {
       return total+(o.owned&&o.rarity===6&&Number.isInteger(value)&&value>0?value:0);
     },0);
   }
+  function starSixPotentialRanking(operators){
+    var rows=operators.filter(o=>o.owned&&o.rarity===6&&Number.isInteger(number(o.potential))&&number(o.potential)>0)
+      .map(o=>({name:o.name,job:o.job,potential:number(o.potential)}))
+      .sort((a,b)=>b.potential-a.potential||compareNames(a.name,b.name));
+    var rank=0;
+    return rows.map((o,i)=>{if(!i||o.potential!==rows[i-1].potential)rank=i+1;return {...o,rank:rank};});
+  }
   function skill(v){var s=text(v).toUpperCase();return /^[123]$/.test(s)?'M'+s:s==='0'||s==='M0'?'':s;}
   function maxed(o){var c=caps[o.rarity];return !!c&&o.elite===c[0]&&o.level===c[1];}
   function mastered(o){var s=o.skills.filter(v=>v!=='-');return o.rarity>=4&&s.length>0&&s.every(v=>v==='M3');}
@@ -104,6 +111,6 @@ var Ark = (function () {
     ['x','y','delta','alpha'].forEach(k=>{var v=text(values[k]);if(!['','-','0','1','2','3'].includes(v))throw Error('モジュールは1〜3で選択してください。');out[k]=v===''||v==='-'?v:Number(v);});
     return out;
   }
-  return {jobs:jobs,caps:caps,modules:modules,fields:fields,columns:columns,text:text,name:name,fromRow:fromRow,maxed:maxed,mastered:mastered,hasPotential:hasPotential,starSixPotentialTotal:starSixPotentialTotal,summarize:summarize,search:search,prepareSearch:prepareSearch,validate:validate};
+  return {jobs:jobs,caps:caps,modules:modules,fields:fields,columns:columns,text:text,name:name,fromRow:fromRow,maxed:maxed,mastered:mastered,hasPotential:hasPotential,starSixPotentialTotal:starSixPotentialTotal,starSixPotentialRanking:starSixPotentialRanking,summarize:summarize,search:search,prepareSearch:prepareSearch,validate:validate};
 })();
 if(typeof module!=='undefined')module.exports=Ark;

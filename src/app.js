@@ -172,13 +172,18 @@
     if(mobile)window.scrollTo({top:0,behavior:'instant'});
     else region.scrollTop=0;
   }
+  function potentialRanking(){
+    var rows=Ark.starSixPotentialRanking(data.operators);
+    function table(list){return '<table class="potential-ranking-table"><thead><tr><th scope="col">順位</th><th scope="col">オペレーター</th><th scope="col">職業</th><th scope="col">潜在</th></tr></thead><tbody>'+list.map(o=>'<tr><td>'+o.rank+'</td><th scope="row">'+e(o.name)+'</th><td>'+e(o.job)+'</td><td>'+o.potential+'</td></tr>').join('')+'</tbody></table>';}
+    return '<section class="potential-ranking" aria-labelledby="potential-ranking-title"><h2 id="potential-ranking-title">★6 凸数ランキング</h2>'+(rows.length?table(rows.slice(0,10))+(rows.length>10?'<details><summary>残り'+(rows.length-10)+'人を表示</summary>'+table(rows.slice(10))+'</details>':''):'<p class="section-note">集計できる潜在の記録がありません</p>')+'</section>';
+  }
   function summaryOverview(){
     var groups=[['全体',data.operators],['★4〜6',data.operators.filter(o=>o.rarity>=4)],...[6,5,4,3,2,1].map(r=>['★'+r,data.operators.filter(o=>o.rarity===r)])].map(([label,list])=>{
       var owned=list.filter(o=>o.owned),eligible=owned.filter(o=>o.rarity>=4);
       return {label:label,masteryApplicable:list.some(o=>o.rarity>=4),available:list.length,count:owned.length,max:owned.filter(Ark.maxed).length,mastered:eligible.filter(Ark.mastered).length,masteryCount:eligible.length,potential:owned.filter(o=>o.potential>=6).length,potentialCount:owned.filter(Ark.hasPotential).length};
     });
     var metrics=[['所持オペレーター','count','available','list'],['レベルMAX','max','count','chart'],['全スキル特化3','mastered','masteryCount','check'],['完凸','potential','potentialCount','chart']];
-    return '<div class="overview summary-overview">'+metrics.map(([label,key,denominator,ic])=>'<section class="metric"><h2 class="metric-label">'+label+icon(ic)+'</h2><dl class="metric-comparison">'+groups.map(g=>'<div><dt>'+g.label+'</dt><dd>'+(key==='mastered'&&!g.masteryApplicable?'<strong>-</strong><small aria-hidden="true">&nbsp;</small>':'<strong>'+g[key]+'</strong><span> / '+g[denominator]+'</span><small>'+percent(g[key],g[denominator])+'</small>')+'</dd></div>').join('')+'</dl></section>').join('')+'</div><section class="potential-total" aria-labelledby="potential-total-title"><div><h2 id="potential-total-title">★6 潜在合計</h2><p>所持している★6の記録値（6超も含む）</p></div><strong>'+Ark.starSixPotentialTotal(data.operators).toLocaleString('ja-JP')+'</strong></section><p class="section-note summary-scope">完凸率の集計からはコラボオペレーターなどの潜在がないオペレーターは除外しています</p>';
+    return '<div class="overview summary-overview">'+metrics.map(([label,key,denominator,ic])=>'<section class="metric"><h2 class="metric-label">'+label+icon(ic)+'</h2><dl class="metric-comparison">'+groups.map(g=>'<div><dt>'+g.label+'</dt><dd>'+(key==='mastered'&&!g.masteryApplicable?'<strong>-</strong><small aria-hidden="true">&nbsp;</small>':'<strong>'+g[key]+'</strong><span> / '+g[denominator]+'</span><small>'+percent(g[key],g[denominator])+'</small>')+'</dd></div>').join('')+'</dl></section>').join('')+'</div><section class="potential-total" aria-labelledby="potential-total-title"><div><h2 id="potential-total-title">★6 潜在合計</h2><p>所持している★6の記録値（6超も含む）</p></div><strong>'+Ark.starSixPotentialTotal(data.operators).toLocaleString('ja-JP')+'</strong></section><p class="section-note summary-scope">完凸率の集計からはコラボオペレーターなどの潜在がないオペレーターは除外しています</p>'+potentialRanking();
   }
   function renderSummary(){
     var s=Ark.summarize(data.operators,summaryRarity),noMastery=['1','2','3'].includes(summaryRarity);

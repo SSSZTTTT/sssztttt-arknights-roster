@@ -250,6 +250,17 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 .potential-total h2 { margin:0;font-size:16px;font-weight:600 }
 .potential-total p { margin:5px 0 0;font-size:12px;line-height:1.6;color:var(--muted) }
 .potential-total strong { font-size:26px;color:var(--blue);font-variant-numeric:tabular-nums;white-space:nowrap }
+.potential-ranking { max-width:600px;margin:24px 0 }
+.potential-ranking h2 { margin:0 0 12px;font-size:18px }
+.potential-ranking-table { width:100%;border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums }
+.potential-ranking-table th, .potential-ranking-table td { padding:10px 8px;border-bottom:1px solid var(--line);text-align:left }
+.potential-ranking-table thead th { color:var(--muted);font-size:12px;font-weight:500;white-space:nowrap }
+.potential-ranking-table tbody th { font-weight:500;overflow-wrap:anywhere }
+.potential-ranking-table td:first-child { width:42px;color:var(--muted) }
+.potential-ranking-table td:nth-child(3) { white-space:nowrap;font-size:13px;color:var(--muted) }
+.potential-ranking-table th:last-child, .potential-ranking-table td:last-child { text-align:right;width:58px }
+.potential-ranking-table td:last-child { color:var(--blue);font-size:19px;font-weight:600 }
+.potential-ranking summary { padding:12px 8px;color:var(--blue);cursor:pointer;font-size:14px }
 .summary-scope { margin-top:0 }
 .summary-overview .metric:after { display:none }
 @media(max-width:760px) {
