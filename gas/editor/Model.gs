@@ -11,6 +11,12 @@ var Ark = (function () {
   function number(v){return text(v)===''||text(v)==='-'?null:Number(text(v));}
   // 「-」は潜在そのものが存在しない。空欄（未入力）とは区別する。
   function hasPotential(o){return text(o.potential)!=='-';}
+  function starSixPotentialTotal(operators){
+    return operators.reduce((total,o)=>{
+      var value=number(o.potential);
+      return total+(o.owned&&o.rarity===6&&Number.isInteger(value)&&value>0?value:0);
+    },0);
+  }
   function skill(v){var s=text(v).toUpperCase();return /^[123]$/.test(s)?'M'+s:s==='0'||s==='M0'?'':s;}
   function maxed(o){var c=caps[o.rarity];return !!c&&o.elite===c[0]&&o.level===c[1];}
   function mastered(o){var s=o.skills.filter(v=>v!=='-');return o.rarity>=4&&s.length>0&&s.every(v=>v==='M3');}
@@ -98,6 +104,6 @@ var Ark = (function () {
     ['x','y','delta','alpha'].forEach(k=>{var v=text(values[k]);if(!['','-','0','1','2','3'].includes(v))throw Error('モジュールは1〜3で選択してください。');out[k]=v===''||v==='-'?v:Number(v);});
     return out;
   }
-  return {jobs:jobs,caps:caps,modules:modules,fields:fields,columns:columns,text:text,name:name,fromRow:fromRow,maxed:maxed,mastered:mastered,hasPotential:hasPotential,summarize:summarize,search:search,prepareSearch:prepareSearch,validate:validate};
+  return {jobs:jobs,caps:caps,modules:modules,fields:fields,columns:columns,text:text,name:name,fromRow:fromRow,maxed:maxed,mastered:mastered,hasPotential:hasPotential,starSixPotentialTotal:starSixPotentialTotal,summarize:summarize,search:search,prepareSearch:prepareSearch,validate:validate};
 })();
 if(typeof module!=='undefined')module.exports=Ark;

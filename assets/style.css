@@ -246,6 +246,10 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 .metric-comparison strong, .metric-comparison dd span { font-size:inherit;font-weight:600;color:inherit }
 .metric-comparison small { display:block;color:var(--blue);margin-top:2px }
 .metric-comparison>div:first-child dd { color:var(--blue) }
+.potential-total { display:flex;align-items:center;justify-content:space-between;gap:16px;max-width:460px;margin:0 0 16px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--panel) }
+.potential-total h2 { margin:0;font-size:16px;font-weight:600 }
+.potential-total p { margin:5px 0 0;font-size:12px;line-height:1.6;color:var(--muted) }
+.potential-total strong { font-size:26px;color:var(--blue);font-variant-numeric:tabular-nums;white-space:nowrap }
 .summary-scope { margin-top:0 }
 .summary-overview .metric:after { display:none }
 @media(max-width:760px) {

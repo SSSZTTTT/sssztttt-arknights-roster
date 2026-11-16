@@ -185,3 +185,12 @@ test('prepared roster searches preserve all sort and filter modes across repeate
   assert.equal(search({query:'百錬'})[0].level,1);
   assert.equal(Ark.prepareSearch(updated)({query:'百錬'})[0].level,90);
 });
+
+
+test('star-six potential total retains excess copies and excludes other rarities, unowned and missing values',()=>{
+  const list=[1,6,28,'12','-',null,'',NaN,Infinity,-1,1.5].map(potential=>op({rarity:6,potential}));
+  list.push(op({rarity:6,potential:99,owned:false}));
+  for(let rarity=1;rarity<=5;rarity++)list.push(op({rarity,potential:6}));
+  assert.equal(Ark.starSixPotentialTotal(list),47);
+  assert.equal(Ark.starSixPotentialTotal([]),0);
+});
