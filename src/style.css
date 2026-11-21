@@ -252,6 +252,12 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 .potential-total strong { font-size:26px;color:var(--blue);font-variant-numeric:tabular-nums;white-space:nowrap }
 .potential-ranking { max-width:600px;margin:24px 0 }
 .potential-ranking h2 { margin:0 0 12px;font-size:18px }
+#incomplete-title small { color:var(--muted);font-size:14px;white-space:nowrap }
+@media(min-width:761px) {
+  #potential-panels { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:clamp(16px,3vw,48px);margin:24px 0 }
+  #potential-panels .potential-ranking { margin:0;max-width:none;min-width:0 }
+  #potential-panels h3 { font-size:15px;margin:20px 0 8px }
+}
 .potential-ranking-table { width:100%;border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums }
 .potential-ranking-table th, .potential-ranking-table td { padding:10px 8px;border-bottom:1px solid var(--line);text-align:left }
 .potential-ranking-table thead th { color:var(--muted);font-size:12px;font-weight:500;white-space:nowrap }

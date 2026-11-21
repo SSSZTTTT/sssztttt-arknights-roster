@@ -101,7 +101,11 @@
     if(menuAnimation){try{await menuAnimation.finished;}catch(_){return;}}
     if(version!==menuVersion)return;menuAnimation=null;hideDialog(menuDialog);
   }
-  menuMedia.addEventListener('change',()=>closeMenu({animate:false}));
+  menuMedia.addEventListener('change', () => {
+    closeMenu({animate:false});
+    const panels = document.getElementById('potential-panels');
+    if (panels && data && view === 'summary') panels.innerHTML = potentialPanels();
+  });
   function setSearchOpen(open){
     searchOpen=open;
     var toggle=document.getElementById('toggle-search'),input=document.getElementById('search');
@@ -195,13 +199,25 @@
         '<th scope="col">オペレーター</th><th scope="col">職業</th><th scope="col">潜在</th></tr></thead><tbody>' +
         rows.join('') + '</tbody></table>';
     }
+    function group(list, label, primary) {
+      if (!list.length) return primary ? '<p class="section-note">潜在1〜5の記録はありません</p>' : '';
+      const count = list.length + '人';
+      if (menuMedia.matches) {
+        const heading = primary ? '' : '<h3>潜在未入力 ' + count + '</h3>';
+        return heading + table(list);
+      }
+      return '<details><summary>' + label + ' ' + count + 'を表示</summary>' + table(list) + '</details>';
+    }
     recorded.sort((a,b) => b.rarity - a.rarity || Number(Ark.text(b.potential)) - Number(Ark.text(a.potential)));
     missing.sort((a,b) => b.rarity - a.rarity);
-    return '<section class="potential-ranking" aria-labelledby="incomplete-title"><h2 id="incomplete-title">未完凸オペレーター</h2>' +
-      (recorded.length ? '<details><summary>未完凸 ' + recorded.length + '人を表示</summary>' + table(recorded) + '</details>'
-        : '<p class="section-note">潜在1〜5の記録はありません</p>') +
-      (missing.length ? '<details><summary>潜在未入力 ' + missing.length + '人を表示</summary>' + table(missing) + '</details>' : '') +
-      '</section>';
+    const count = menuMedia.matches ? ' <small>' + recorded.length + '人</small>' : '';
+    return '<section class="potential-ranking" aria-labelledby="incomplete-title"><h2 id="incomplete-title">未完凸オペレーター' +
+      count + '</h2>' + group(recorded, '未完凸', true) + group(missing, '潜在未入力', false) + '</section>';
+  }
+  function potentialPanels() {
+    const incomplete = incompletePotentialList(data.operators);
+    const ranking = potentialRanking();
+    return menuMedia.matches ? ranking + incomplete : incomplete + ranking;
   }
   function potentialRanking(){
     var rows=Ark.starSixPotentialRanking(data.operators);
@@ -214,7 +230,7 @@
       return {label:label,masteryApplicable:list.some(o=>o.rarity>=4),available:list.length,count:owned.length,max:owned.filter(Ark.maxed).length,mastered:eligible.filter(Ark.mastered).length,masteryCount:eligible.length,potential:owned.filter(o=>o.potential>=6).length,potentialCount:owned.filter(Ark.hasPotential).length};
     });
     var metrics=[['所持オペレーター','count','available','list'],['レベルMAX','max','count','chart'],['全スキル特化3','mastered','masteryCount','check'],['完凸','potential','potentialCount','chart']];
-    return '<div class="overview summary-overview">'+metrics.map(([label,key,denominator,ic])=>'<section class="metric"><h2 class="metric-label">'+label+icon(ic)+'</h2><dl class="metric-comparison">'+groups.map(g=>'<div><dt>'+g.label+'</dt><dd>'+(key==='mastered'&&!g.masteryApplicable?'<strong>-</strong><small aria-hidden="true">&nbsp;</small>':'<strong>'+g[key]+'</strong><span> / '+g[denominator]+'</span><small>'+percent(g[key],g[denominator])+'</small>')+'</dd></div>').join('')+'</dl></section>').join('')+'</div><section class="potential-total" aria-labelledby="potential-total-title"><div><h2 id="potential-total-title">★6 潜在合計</h2><p>所持している★6の記録値（6超も含む）</p></div><strong>'+Ark.starSixPotentialTotal(data.operators).toLocaleString('ja-JP')+'</strong></section><p class="section-note summary-scope">完凸率の集計からはコラボオペレーターなどの潜在がないオペレーターは除外しています</p>'+incompletePotentialList(data.operators)+potentialRanking();
+    return '<div class="overview summary-overview">'+metrics.map(([label,key,denominator,ic])=>'<section class="metric"><h2 class="metric-label">'+label+icon(ic)+'</h2><dl class="metric-comparison">'+groups.map(g=>'<div><dt>'+g.label+'</dt><dd>'+(key==='mastered'&&!g.masteryApplicable?'<strong>-</strong><small aria-hidden="true">&nbsp;</small>':'<strong>'+g[key]+'</strong><span> / '+g[denominator]+'</span><small>'+percent(g[key],g[denominator])+'</small>')+'</dd></div>').join('')+'</dl></section>').join('')+'</div><section class="potential-total" aria-labelledby="potential-total-title"><div><h2 id="potential-total-title">★6 潜在合計</h2><p>所持している★6の記録値（6超も含む）</p></div><strong>'+Ark.starSixPotentialTotal(data.operators).toLocaleString('ja-JP')+'</strong></section><p class="section-note summary-scope">完凸率の集計からはコラボオペレーターなどの潜在がないオペレーターは除外しています</p><div id="potential-panels">'+potentialPanels()+'</div>';
   }
   function renderSummary(){
     var s=Ark.summarize(data.operators,summaryRarity),noMastery=['1','2','3'].includes(summaryRarity);
