@@ -260,6 +260,7 @@ svg { width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor
 .potential-ranking-table td:nth-child(3) { white-space:nowrap;font-size:13px;color:var(--muted) }
 .potential-ranking-table th:last-child, .potential-ranking-table td:last-child { text-align:right;width:58px }
 .potential-ranking-table td:last-child { color:var(--blue);font-size:19px;font-weight:600 }
+.incomplete-table td:last-child { white-space:nowrap;font-size:16px }
 .potential-ranking summary { padding:12px 8px;color:var(--blue);cursor:pointer;font-size:14px }
 .summary-scope { margin-top:0 }
 .summary-overview .metric:after { display:none }
